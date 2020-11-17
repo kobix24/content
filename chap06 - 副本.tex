@@ -1,0 +1,62 @@
+%!TEX root = D:\thesis\thesis_bx.tex
+\chapter{轻量级CoAP协议的安全性分析及改进}
+华为NB-IoT 战略中的首款芯片 Boudica 120 以及 LiteOS
+操作系统支持CoAP协议。
+
+
+\section{CoAP协议介绍}
+CoAP，即约束应用协议，与HTTP协议一样也是
+一种文档传输协议。而不同的是，CoAP是针对受限
+设备的需求来设计的，其数据包大小远小于HTTP的
+TCP流。CoAP通过 UDP协议运行，客户端和服务器
+通过无连接数据包进行通信，并且允许UDP广播和多
+播用于寻址。其结构如图\ref{fig-coap}
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=13cm]{data/content/chap05/CoAP协议}
+	\caption{CoAP结构图}
+	\label{fig-coap}
+\end{figure}
+CoAP协议遵循客户端/服务器模型，客户端向服务
+器发出请求，服务器对请求发回响应。模型中的客户
+端和服务器是功能逻辑上的划分,节点可兼具客户端和
+服务器的功能[5]。像 HTTP一样，CoAP基于非常成功
+的REST模型：服务器使资源在URL下可用，客户端使
+用GET，PUT，POST和DELETE等方法访问这些资源。
+
+CoAP协议的开源实现，有三个版本较为实用：
+
+(1)libcoap
+ibcoap是针对资源受限（如计算能力、射频范围、
+内存、带宽、网络数据包大小等）设备的轻量级应用程
+序协议的C实现。该协议由IETF作为RFC 7252标准
+
+(2)Californium
+基于 Java 实现的 Californium 是另一个很实用的
+开源版本。Californium 是一个强大的 CoAP 框架，它
+为技术人员开发与调试提供了很方便的API。
+
+(3)node-coap
+node-coap 是建立在 Node.js 的 http 库上的一个
+CoAP协议客户端和服务器的开源库。它也是一种很
+流行 CoAP 实现方式，具有快速搭建、简单配置的特
+性，可以方便地使用它进行测试与开发。
+
+以 CoAP实现，类似于传统的Web服务器，单车以
+GET、POST 等方式向服务器发送请求，例如认证、故
+障等，服务器对请求作出响应，单车使用返回的响应
+信息进行相应的操作。此时，服务器需要识别每一个节点，信息交互需要二者同时处于在线状态。
+
+
+\section{CoAP协议模型}
+
+
+\subsection*{协议模型}
+
+\subsection*{安全属性建模}
+对CoAP协议进行建模，其模型可以看作
+
+\section{改进的CoAP协议}
+
+
+\section{实验与结果分析}

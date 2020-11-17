@@ -1,0 +1,604 @@
+﻿%!TEX root = C:\Users\kobix\Documents\gradu\thesis1\thesiscc.tex
+
+\chapter{基于操作语义的敌手模型拓展}
+\label{adversary}
+传统的Dolev-Yao敌手模型无法适应当前复杂网络环境中对敌手能力的表征能力。有些经过Dolev-Yao敌手模型分析证明安全的协议，也有可能在后来的实践中被证明不安全。操作语义作为形式语义的一种重要形式描述框架，常被描述成抽象机或转换系统，它能够描述实际运行的系统结构含义来模拟系统的执行。通过协议的操作语义模型，能够将协议的执行模型、敌手模型和安全性属性分开敌手攻击能力分解和归纳出来，为不同类型的敌手攻击能力建模，从而相对应地对协议进行分析。
+
+本章研究基于操作语义的敌手模型拓展，深入研究敌手攻击能力，提出了基于操作语义的敌手模型，该模型拓展了传统敌手模型，将敌手攻击能力在密码学上分解为三个维度，定义了六个敌手攻击规则，拓展的敌手模型适用于协议强安全性分析。扩展了的敌手模型，能够对弱完美传输机密性、密钥泄露和本地状态泄露进行分析。拓展的敌手模型借鉴了计算安全的架构，能够为符号方法的自动化验证提供支持。通过拓展敌手推导规则，增强敌手攻击能力，能够自动化分析传统Dolev-Yao敌手模型中认为安全的协议，验证了在Dolev-Yao模型下安全的HMQV协议在拓展后的敌手模型下是不安全的。
+
+\section{基于操作语义的协议建模}
+
+协议的操作语义模型以语义学为基础，把协议看成一系列角色（节点在协议中的身份，如发送方、接收方等。）执行收发消息等事件的集合，将安全协议的性质以角色事件的形式统一定义在协议的规范中，通过在一个协议中加入多个协议的
+角色来分析协议的组合问题。
+协议的操作语义模型能够形式化地对敌手攻击能力进行建模，有利于进一步丰富对敌手攻击能力的描述能力，拓展传统敌手模型的能力边界。
+本节给出协议的操作语义模型，能够对协议的规范模型、协议的执行模型、协议安全属性建立形式化操作语义模型。
+
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=8cm]{data/content/chap03/operationsemanticmodel}
+	\caption{基于操作语义的协议的模型}
+	\label{fig-opsemanticmodel}
+\end{figure}
+
+\subsection{规范模型}
+在协议的操作语义模型中协议规范模型是一个角色的集合，
+规范模型描述了各角色的初始知识和行为，包含基本角色项和通过基本角色项合成的角色项。
+
+首先对操作语义的基本标记进行介绍。
+设$f$是一个函数，记$dom(f)$和 $ran(f)$ 表示$f$ 象和原象，记$f[b\leftarrow a]$表示函数的替换，即当$f(x)=a$ 时，$f'(x)=b$ ，其余$f(x)=f'(x)$。$f:X\nrightarrow Y$ 表示从$X$ 到$Y$ 的单射。对任意集合$S$ ，将$\mathcal{P}(S)$ 记作$S$ 的幂集。$<{{s}_{0}},...,{{s}_{n}}>$表示元素${{s}_{0}}$ 到${{s}_{n}}$ 的序列。$s\hat{\ }s'$ 表示序列$s$ 与$s'$ 的合成。对一个长度为$|s|$ 的序列，${{s}_{i}}$ 表示序列中的第$i$ 个元素。$e\in s$ 当且仅当$\exists i,{{s}_{i}}=e$。设$Sub$ 为一组替换，则$[{{t}_{0}},...,{{t}_{n}}/{{x}_{0}},...,{{x}_{n}}]\in Sub$ 表示同时用${{t}_{i}}$ 替换${{x}_{i}}$ 。 $\sigma \cup \sigma '$表示两个替换的并。对一个二元关系$R$ ，$R*$ 表示它的自反传递闭包。
+
+
+通过角色实例化，协议可以在线程中运行。每个线程运行了一个的相互发送接收消息的事件序列。需要对参与协议交互的基本要素，给与形式化定义。
+定义有限集合$Agent,Role,Fresh,Var,Func,TID$ 来表示节点名，角色，新鲜数，变量，函数名以及线程号。
+\begin{definition}{（基本消息项）}
+
+基本消息项包括变量、角色、新鲜数、变量、函数名及线程号：
+(1)变量集由$Var$表示，代表用来存储收到的消息；
+(2)新鲜数由$Fresh$表示，代表在主题实例化过程中新生成的值；
+(3)角色由$Role$表示，代表消息的发送或接受方；
+(4)函数由$Func$表示，代表有一定参数的函数名。
+\end{definition}
+
+在表\ref{table:基本项集}中列出了这些集合的典型元素。
+
+\begin{table}[htb]
+  \centering
+  \caption{基本消息项集}
+\begin{tabular}{|c|c|c|}
+  \hline
+  % after \\: \hline or \cline{col1-col2} \cline{col3-col4} ...
+  描述 & 集合 & 典型元素  \\
+  \hline
+  角色项 & $RoleTerm$ & $rt_1,rt_2$  \\
+  变量 & $Var$ & $V,W,X,Y,Z$ \\
+  新鲜数 & $Fresh$ & $ni,nr,sessionkey$\\
+  角色 &  $Role$   & i,r,s \\
+  函数 & $Func$ & h \\
+  \hline
+
+\end{tabular}
+\label{table:基本项集}
+\end{table}
+
+
+当线程中的角色规范实例化时，角色通过节点名实现实例化。为了在特定线程中绑定局部项，比如新生成项，或局部变量，记做$T\#tid$  。这表示项$T$ 对于线程数$tid$是局部的。
+
+\begin{definition}{(角色项)}
+
+角色项由基本消息项，组合项和加密项构成，即
+\begin{align}
+  & Term::=Agent|Role|Fresh|Var|Fresh\#TID|Var\#TID \\
+ & |(Term,Term)|pk(Term)|sk(Term)|k(Term,Term)|\{|Term|_{Term}^{a}\}|
+\end{align}
+\end{definition}
+
+
+对每个$X,Y\in Agent,sk(X)$ 表示长期私钥，$pk(X)$ 表示长期公钥，$k(X,Y)$ 表示$X,Y$ 共享的长期对称密钥。
+通过已分析的协议，对称或非对称长期密钥优先分发给协议执行。首先定义一个二元关系$\vdash$ ，这里$M\vdash t$ 表示项$t$ 可以从项集$M$ 中推得。记${{t}_{0}},...,{{t}_{n}}\in Term$ ，并设$f\in Func$ 。定义$\vdash$ 为满足下列关系的最小关系：
+\begin{table}[htb]
+  \centering
+  \caption{推导规则}
+\[\begin{matrix}
+   t\in M\Rightarrow M\vdash t & M\vdash {{t}_{1}}\wedge M\vdash {{t}_{2}}\Leftrightarrow M\vdash ({{t}_{1}},{{t}_{2}})  \\
+   M\vdash \{|{{t}_{1}}|\}_{{{t}_{2}}}^{s}\vdash M\vdash {{t}_{2}}\Rightarrow M\vdash {{t}_{1}} & M\vdash {{t}_{1}}\wedge M\vdash {{t}_{2}}\Rightarrow M\vdash \{|{{t}_{1}}|\}_{{{t}_{2}}}^{s}  \\
+   M\vdash \{|{{t}_{1}}|\}_{{{t}_{2}}}^{a}\wedge M\vdash {{({{t}_{2}})}^{-1}}\Rightarrow M\vdash {{t}_{1}} & M\vdash {{t}_{1}}\wedge M\vdash {{t}_{2}}\Rightarrow M\vdash \{|{{t}_{1}}|\}_{{{t}_{2}}}^{a}  \\
+
+\end{matrix}\]
+
+\label{table:chap03-inference}
+\end{table}
+
+项$t$ 的子项$t'$ ，写作$t'\sqsubseteq t$，定义为$t$ 的语义子项。定义$FV(t)$ 为$t$ 的自由变量，这里$FV(t)=\{t'|t'\sqsubseteq t\wedge t'\in Var\cup \{v\#tid|v\in Var\wedge tid\in TID\}\}$  。
+
+
+\begin{definition}{(事件)}
+
+事件定义为协议角色执行收发消息和声明等动作。角色事件是由发送事件，接收事件以及声明事件构成的序列，
+\begin{align}
+ & \text{ }AgentEvent::=\operatorname{create}(Role,Agent)|send(Term)|recv(Term)|generate(\mathcal{P}(Fresh)) \\
+ & \text{      }|state(\mathcal{P}(Fresh))|sessionkeys(\mathcal{P}(Fresh)) \\
+ & AdversaryEvent::=\operatorname{LKR}(Agent)|SKR(TID)|SR(Term)|RNR(TID) \\
+ & \text{    Event}::=AgentEvent|AdversaryEvent
+\end{align}
+\end{definition}
+
+ 对节点和敌手事件进行简要介绍。这里首先明确三个基本节点事件：启动线程，发送消息，接收消息。发送和接收事件中的消息没有明确的发送方或接收方，如果需要，它们可以设定为消息的子项。最后三个节点事件包含状态信息，而这时可以被敌手攻破的。四个敌手事件明确了敌手能够攻破的消息事件。这些事件可以在协议执行的任意时间内发生并在对应着计算模型的不同敌手模型。所有敌手事件都在单独的敌手事件$ti{{d}_{A}}$中执行。
+
+\subsection{协议和线程}
+一个协议是从角色到事件序列的单射，也即$protocol:Role\nrightarrow AgentEvent*$ 。不需要线程号线程作为事件的子项。协议通过执行角色的节点来执行，因此需要对角色名标记节点名以进行实例化。
+通过事件运行角色来执行协议，一次需要通过节点名将角色名执行。每个节点可以在执行多次角色，每个角色
+对其事件的执行被称为线程。通过本地化函数$localize:TID\to Sub$指定每个线程的名称区分新鲜项和每个线程的变量。
+
+\begin{definition}{(本地化)}
+
+
+	设$tid\in TID$ ，则：
+	\[localize\left( tid \right)=\bigcup\limits_{cv\in Fresh\cup Var}{\left[ cv\#tid/cv \right]}\]
+\end{definition}
+通过本地化，可以定义一个函数$thread:(AgentEvent^*\times TID \times Sub)\to AgentEvent^*$,函数$thread$表示了在一个线程中的节点事件序列。
+
+\begin{definition}{(线程)}
+
+
+	$l$ 是一个事件序列，$tid\in TID$ ，设$\sigma$ 是节点名对角色名的置换，则函数$thread\left( l,tid,\sigma  \right)=\sigma \left( localize\left( tid \right)\left( l \right) \right)$ 。	在验证安全属性时，有一个特殊的线程，在计算设置中，敌手在这个线程中进行测试查询。
+\end{definition}
+
+\subsection{执行模型}
+协议的执行模型由系统状态、协议执行规则以及敌手规则组成。
+
+为了表示所有可能的的执行迹，定义迹集合为$Trace:(TID\times Event)^*$，通过迹集合可以定义系统状态。
+
+系统状态用一个四元组$\left( tr,IK,th,{{\sigma }_{Test}} \right)\in Trace\times \mathcal{P}\left( Term \right)\times \left( TID\nrightarrow Event* \right)\times Sub$ 表示。
+\begin{definition}{（系统初始状态）}
+
+	一个协议$P$中，系统初始状态集合$IS\left( P \right)$ 定义为：
+	\[IS\left( P \right)=\bigcup\limits_{\sigma \in Test}{\left\{ \left( \left\langle {} \right\rangle ,A{{K}_{0}},\phi ,{{\sigma }_{Test}} \right) \right\}}\]
+	 \end{definition}
+协议$P$的语义通过一个结合了协议执行规则以及敌手规则的迁移系统来定义。首先介绍执行规则。
+迁移规则由表\ref{table:transition}可以表示：
+
+
+\begin{table}[htb]
+  \centering
+  \caption{迁移规则}
+\begin{tabular}{|c|c|}
+  \toprule
+规则名称 & 规则\\
+ \midrule
+  % after \\: \hline or \cline{col1-col2} \cline{col3-col4} ...
+  $[create]$&$\displaystyle\frac{R\in dom(P),((\theta ,\rho ,\varphi ),s)\in runsof(P,R),\theta \notin runIDs(F)}{<<AKN,F>>\xrightarrow{((\theta ,\rho ,\varphi ),create(R))}<<AKN,F\cup \{((\theta ,\rho ,\varphi ),s)\}>>}$\\
+\hline
+  $[send]$&$\displaystyle\frac{e=sen{{d}_{l}}({{R}_{1}},{{R}_{2}},m),(inst,[e]\cdot s)\in F}{<<AKN,F>>\xrightarrow{(inst',e)}<<AKN,(F\backslash \{(inst,[e]\cdot s)\})\cup \{(inst,s)\}>>}$\\
+\hline
+  $[recv]$&$\displaystyle\frac{e=rec{{v}_{l}}({{R}_{1,}}{{R}_{2}},pt),(inst,[e]\cdot s)\in F,AKN\mapsto m,Match(inst,pt,m,inst')}{<<AKN,F>>\xrightarrow{(inst',e)}<<AKN,(F\backslash \{(inst,[e]\cdot s)\})\cup \{(inst',s)\}>>}$\\
+\hline
+$[claim]$ &$\displaystyle\frac{e=clai{{m}_{l}}(R,c)\vee e=clai{{m}_{l}}(R,c,t),(inst,[e]\cdot s)\in F}{<<AKN,F>>\xrightarrow{(inst,e)}<<AKN,(F\backslash \{(inst,[e]\cdot s)\})\cup \{(inst,s)\}>>}$\\
+\bottomrule
+\end{tabular}
+\label{table:transition}
+\end{table}
+
+ $creat$规则表示任何状态下运行集中的新运行可以被产生。
+$send$规则表示F中有运行的下一步为发送事件。通过发送事件敌手能够获得被发送的消息，运行进行到下一步。
+ $recv$规则表示F中有运行的下一步为接收事件。通过接受事件敌手无法获得新的信息，运行进行到下一步。
+ $claim$规则表示F中有运行的下一步为断言事件。
+在协议执行过程中，测试线程可能有意与其他线程共享一些短期秘密，例如会话密钥. 因此，一些敌手规则需要区分预期的合作线程和其他线程。在文献中有许多关于合作的概念。在这里，使用基于匹配历史的合作关系来匹配具有两个角色的协议。对于具有任意数量角色的协议，如Cremers等\cite{Cremers2005a}定义的具有任意数量角色的非单射一致协议。
+
+\section{敌手模型拓展研究}
+本节在数据泄漏的数据类型、数据泄漏的身份标识、数据泄漏的发生时间三个维度上对这种敌手攻击规则进行了定义，并建立了敌手长期密钥攻击模型和敌手短期数据攻击模型。
+许多基于符号的形式化方法都是对Dolev-Yao模型进行分析的。在Dolev-Yao模型中，协议参与者要么从开始就是诚实的并将一直保有自己的秘密，要么从开始就是完全的恶意用户并一直被敌手控制。这限制了协议中对诚实用户与被攻陷用户的情况分析。
+在基于计算的形式化方法中，研究者定义了一系列敌手攻击规则，这些攻击规则中，协议参与者可能会在协议执行过程中被选择性攻陷，从而将其短期，长期密钥等秘密泄露给敌手。这些模型可以用来描述协议的诸如完美前向保密性(Perfect forward secrecy)，密钥独立性(Key Independence)，抗密钥泄露模仿性(Key Compromise Impersonation)等更强的安全属性，敌手模型即是敌手攻击规则的一个子集。
+\subsection{敌手攻击规则拓展研究}
+本节对符号方法中的敌手攻击规则进行拓展，首先介绍敌手初始知识，它代表了敌手在开始攻击网络时已知的消息。
+
+\begin{definition}{（敌手初始知识）}
+
+	  \[A{{K}_{0}}=Agent\cup \left\{ pk\left( \text{a} \right)\text{ }\!\!|\!\!\text{ a}\in Agent \right\}\cup \left\{ c\#ti{{d}_{\mathcal{A}}}\text{ }\!\!|\!\!\text{ }c\in Fresh \right\}\]
+\end{definition}
+
+设敌手知道网络中所有的节点名，公钥以及与敌手线程名$ti{{d}_{\mathcal{A}}}$相关的敌手生成的常数。不同于大多数Dolev-Yao模型，敌手初始知识不包括任何的长期密钥。敌手需要通过长期密钥泄漏事件（LKR）来获得这些秘密。
+
+
+\begin{definition}{(长期密钥)}
+
+
+	节点a的长期密钥可以定义为：
+	\[LongTermKeys\left( a \right)=\left\{ sk\left( a \right) \right\}\cup \bigcup\limits_{b\in Agent}{\left\{ k\left( a,b \right),k\left( b,a \right) \right\}}\]
+	在协议执行中，测试线程可能将主动和其他线程共享它的诸如会话密钥等短期秘密。一次敌手规则中需要区分目标合作线程和其他线程。
+
+\end{definition}
+
+
+建立敌手模型的攻击规则，值得说明的是，在建立攻击规则时，为了真正实现安全协议的完美前向保密性、密钥独立性、抗密钥泄露模仿性，可将敌手攻击的能力域分解为三个维度：数据泄漏的数据类型、数据泄漏的身份标识、数据泄漏的发生时间。
+基于上述三个纬度，建立敌手模型的攻击规则包括以下6个规则，分别为$\left[ LK{{R}_{others}} \right]$规则、$\left[ LK{{R}_{actor}} \right]$规则、$\left[ LK{{R}_{after}} \right]$规则、$SKR$规则、$SR$规则、$RNR$规则，拓展的敌手攻击规则定义如表\ref{table:attacker rule}所示：
+
+\begin{table}[htb]
+  \centering
+  \caption{敌手攻击规则}
+\begin{tabular}{c}
+
+  $\displaystyle\frac{a\notin \left\{ {{\sigma }_{Test}}\left( R \right)|R\in dom\left( P \right) \right\}}{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},LKR\left( a \right) \right) \right\rangle ,IK\cup LongTermKeys\left( a \right),th,{{\sigma }_{Test}} \right)}\left[ LK{{R}_{others}} \right]$  \\
+
+$\displaystyle\frac{a={{\sigma }_{Test}}\left( {{R}_{Test}} \right)\ \ \ \ \ \ \ a\notin \left\{ {{\sigma }_{Test}}\left( R \right)|R\in dom\left( P \right)\backslash \left\{ {{R}_{Test}} \right\} \right\}}{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},LKR\left( a \right) \right) \right\rangle ,IK\cup LongTermKeys\left( a \right),th,{{\sigma }_{Test}} \right)}\left[ LK{{R}_{actor}} \right]$\\
+
+$\displaystyle\frac{a\in Agent\ \ \ \ \ \ \ th\left( Test \right)=\left\langle {} \right\rangle }{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},LKR\left( a \right) \right) \right\rangle ,IK\cup LongTermKeys\left( a \right),th,{{\sigma }_{Test}} \right)}\left[ LK{{R}_{after}} \right]$\\
+
+$\displaystyle\frac{tid\ne Test\ \ \ \ \ \ \ tid\notin Partner\left( tr,{{\sigma }_{Test}} \right)}{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},SKR\left( tid \right) \right) \right\rangle ,IK\cup union\left( tr\downarrow tid \right)\downarrow sessionkeys,th,{{\sigma }_{Test}} \right)}\left[ SKR \right]$\\
+
+$\displaystyle\frac{tid\ne Test\ \ \ \ \ \ \ tid\notin Partner\left( tr,{{\sigma }_{Test}} \right)\ \ \ \ \ th\left( tid \right)\ne \left\langle {} \right\rangle }{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},SR\left( tid \right) \right) \right\rangle ,IK\cup union\left( tr\downarrow tid \right)\downarrow state,th,{{\sigma }_{Test}} \right)}\left[ SR \right]$\\
+
+$\displaystyle\frac{{}}{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},RNR\left( tid \right) \right) \right\rangle ,IK\cup union\left( tr\downarrow tid \right)\downarrow generate,th,{{\sigma }_{Test}} \right)}\left[ RNR \right]$\\
+
+
+
+  \end{tabular}
+\label{table:attacker rule}
+\end{table}
+
+
+其中，$R$代表角色（消息的发送方或接受方），$P$代表安全协议，$tid$表示线程号，$Test$表示当前测试线程的线程号；$dom(P)$表示安全协议$P$的象；$(tr, IK, th, σ_{Test})$表示安全协议的运行状态，$tr$表示安全协议的执行迹，$IK$表示敌手知识，$th$表示将线程映射到事件的映射函数，$σTest$表示利用测试线程中节点名对角色名的置换；$R_{Test}$表示测试线程，$σ_{Test(R)}$表示通过测试线程节点名对线程$R$的角色进行置换，$σ_{Test(R_{Test})}$表示通过测试线程节点名对测试线程$R_{Test}$的角色进行置换，$th(Test)$表示将测试线程对应的事件序列，$th(tid)$表示线程号为$tid$的线程对应的事件序列，$partner(tr, σTest)$表示测试线程的合作线程，$LKR(a)$表示长期密钥攻击事件，$SKR(tid)$表示会话密钥泄漏事件、$SR(tid)$表示状态泄漏事件，$RNR(tid)$表示随机数泄漏事件；$sessionkeys$为生成线程tid会话密钥的事件，$state$为显示线程tid的状态的事件，generate为生成tid的新鲜数的事件，节点$a$的长期密钥 ，$sk(a)$为节点a的私钥，k(a,b)为节点a和节点b的共享密钥，$union(tr_tid)$表示线程号为tid的线程的迹tr的所有事件的集合。
+
+
+这些规则能够将密码学上的敌手攻击分解为三个维度：
+\begin{itemize}
+\item	数据泄漏对应的数据类型
+\item	数据泄漏的身份标识
+\item	数据泄漏发生的时间
+\end{itemize}
+称敌手模型是敌手攻击规则的任意一个子集。
+\subsection{敌手长期密钥攻击模型}
+敌手攻击规则中的前三条是对节点a的长期密钥敌手攻击建模，用敌手长期密钥攻击模型$LKR\left( a \right)$表示。
+
+
+传统Dolev-Yao模型中，这个事件发生在不可信点上。
+
+	  $LKR_{others}$规则形式化表示了在安全协议符号分析中应用的敌手模型：敌手可以从节点a的非测试线程参与节点a的长期密钥。因此，这个规则描述了一个测试线程被发送端执行用以与接收端通信时，敌手可以获取第三方的长期密钥的情景。
+
+
+ $LKR_{actor}$指敌手获得执行测试线程的节点的长期密钥的情况。此时协议仍旧能够在通信的另一方长期密钥未泄漏的情况写执行。这个规则允许敌手进行急性密钥冒充攻击。该规则的第二个前提是该敌手模型不允许参与者密钥在测试会话结束前泄漏。
+
+ $LKR_{after}$规则限制了攻击发生的时间。它规定了长期密钥泄漏必须发生在测试线程结束之后。如果一个协议对于能够使用$LKR_after$规则的敌手模型满足机密性，那么称该协议满足完美前向安全性。
+图\ref{fig-longtermkey}解释了长期密钥攻击规则在相应维度中的关系。
+
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=13cm]{data/content/chap03/longtermkey}
+	\caption{长期密钥攻击规则关系图}
+	\label{fig-longtermkey}
+\end{figure}
+
+该图对敌手攻击发生的时间维度进行划分，将攻击分为测试线程之前，测试线程之中，测试线程之后。对密钥泄漏的身份标识进行划分，将密钥泄漏分为执行节点泄漏，合作节点泄漏以及其他节点泄漏。
+\subsection{敌手短期数据攻击模型}
+敌手攻击规则中另外三个规则是针对节点短期数据的攻击，即特定线程中的局部数据。这三条规则构成了敌手短期数据攻击模型。
+在敌手短期数据攻击模型中，密钥泄漏事件$SKR(tid)$和状态泄漏事件$SR(tid)$对敌手获得了会话密钥和线程$tid$的局部状态有关。
+随机数泄漏事件$RNR(tid)$对敌手获得线程$tid$生成的随机数进行了建模。
+注意到  和  规则的前提是被攻击线程不是一个参与线程。与之相反的是，  规则允许对所有线程的攻击。对于建立会话密钥的协议，  规则不允许测试线程和参与线程的会话密钥泄漏。
+	图\ref{fig-shorttermkey}解释了短期数据泄漏发生的相应维度：
+ \begin{figure}[htp]
+	\centering
+	\includegraphics[width=8cm]{data/content/chap03/shortterm}
+	\caption{短期数据攻击规则关系图}
+	\label{fig-shorttermkey}
+\end{figure}
+
+图\ref{fig-shorttermkey}中每列表示数据泄漏的身份表示，每行表示泄漏的不同数据类型，可以将局部数据划为三类：随机数，会话密钥以及其他局部数据。
+
+敌手可能获取协议中使用的随机性的概念源于LaMacchia等人\cite{LaMacchia2007}。敌手可以通过密码分析等手段获得会话密钥\cite{Bellare1994}。Canetti和Krawczyk\cite{Canetti2001}描述了一个能够获得本地状态的敌手。
+
+在拓展敌手模型中，会话密钥泄露事件$SKR(tid)$和状态泄露事件$SR(tid)$模型中，敌手能够分别接触会话密钥或线程$tid$的本地状态。它们分别由会话密钥$sessionkeys$和状态$state$事件标记。
+状态的内容随时间而变化，并在线程结束时消除。这在SR规则中反映为状态内容的最后一个状态标记，以及线程tid没有结束。该随机数泄漏事件RNR(tid)模型表示敌手获得线程tid中生成的随机数。SKR和SR规则的规定被攻击的线程不能是合作线程。相反地，RNR规则允许所有线程被攻击，包括合作线程。
+对于建立会话密钥的协议，假定会话密钥是由所有合作方共享的，并且是秘密的，那么泄漏密钥显然违反了这个属性。因此，SKR规则不允许对合作线程的会话密钥进行攻击。类似地，基本规则集不包含对合作方的其他本地数据进行攻击的规则。
+
+
+\textbf{迁移关系}
+
+	给定一个协议和敌手模型，可以通过一组迁移关系来定义协议行为。
+	\begin{definition}{(迁移关系)}
+
+
+	设$P$是一个协议，$Adv$是敌手模型并且 $R_{test}$是一个角色。通过协议执行规则和敌手规则来定义迁移关系$\rightarrow_{P,Adv,R_{test}}$ 。变量$P,Adv,R_{test}$通过迁移关系中的相应参数进行实例化。对状态$s$和$s'$，当且仅当执行规则或敌手规则中能够在$Q_1(s),\ldots,Q_n(s)$的条件下得到结论$s\rightarrow s'$。
+\end{definition}
+
+
+\section{可验证安全属性建模}
+	通过敌手攻击模型拓展，可以对协议可验证安全属性进行建模。结合不同的敌手模型，下面给出可验证安全属性的形式化定义。
+
+
+
+
+\subsection{安全属性分解}
+首先对协议安全属性进行形式化定义。
+
+
+		\begin{definition}{(会话密钥机密性)}
+
+
+	设$\left( tr,IK,th,{{\sigma }_{Test}} \right)$是一个状态，定义$\left( tr,IK,th,{{\sigma }_{Test}} \right)$中的会话密钥机密性为：
+	\[th\left( Test \right)=\left\langle {} \right\rangle \Rightarrow \forall k\in union\left( \left( tr\downarrow Test \right)\downarrow sessionkeys \right),IK\nvdash k.\]
+	\end{definition}
+
+	\begin{definition}{(协议存活性)}
+
+
+	设$\left( tr,IK,th,{{\sigma }_{Test}} \right)$是一个状态。定义$\left( tr,IK,th,{{\sigma }_{Test}} \right)$满足存活性当且仅当
+	\[\begin{aligned}
+  & th\left( Test \right)=\left\langle {} \right\rangle \Rightarrow \exists i,i',j,{{R}_{Test}}R,tid,a.t{{r}_{i}}=\left( Test,create\left( {{R}_{Test}},a \right) \right) \\
+ & \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \hat{\ }t{{r}_{i'}}=last\left( tr\downarrow Test \right)\hat{\ }t{{r}_{j}}=\left( tid,create\left( R,{{\sigma }_{Test}}(R) \right) \right)\hat{\ }R\ne {{R}_{Test}}\hat{\ }j<i' \\
+\end{aligned}\]
+\end{definition}
+
+	存活性形式化地描述了测试线程的运行，它的迹包含了测试线程的初始事件和终结事件，并且对于目标节点$(\sigma_{Test}(R))$在测试线程结束前开始了其他的线程。
+
+设$\phi$表示所有状态属性的集合。对于所有协议$P$、敌手模型$Adv$和状态属性$\Phi$，记为$sat(P, Adv, \phi)\quad iff\quad \forall R. \forall s. s \in RS(P, Adv, R) \Rightarrow \phi(s)$。对于状态属性$\phi$，协议对敌手攻击能力是具有弹性的，当且仅当$sat(P,{AC}, \Phi)$成立。
+
+
+许多安全属性的定义中，包含了敌手攻击能力的基本元素。通过本章提出的敌手拓展模型中，可以将这类安全属性清晰地分解为一个基本安全属性和一个敌手模型的结合。表\ref{table:chap03-propertydecomposition}提供了一个这类安全属性的分解示意。
+
+\begin{table}[htb]
+	\centering
+	  \caption{安全属性分解}
+\begin{tabular}{|c|c|c|}
+\cline{1-3}
+\multirow{2}{*}{安全属性} & \multicolumn{2}{c|}{分解}       \\\cline{2-3}
+                      & 基本属性 & 敌手模型   \\\cline{1-3}
+完美前向安全性               & 机密性  &  ${LKR_{after}}$     \\\cline{1-3}
+已知密钥安全及未知密钥分享                     &  会话密钥机密性 &SKR \\\cline{1-3}
+ 密钥模仿攻击 & 认证性/会话密钥机密性  &  $LKR_{actor}$  \\\cline{1-3}
+\end{tabular}
+\label{table:chap03-propertydecomposition}
+\end{table}
+
+	在敌手拥有给定能力的协议执行环境中，本章的安全属性建模方法提供了一个协议安全属性的统一视角。这能够得到敌手模型与基本安全属性的实用组合。
+\subsection{安全属性与敌手模型的联系}
+通过对敌手基本能力分类，可以获得很多的模型，本节对安全属性与敌手模型间的关联进行了推导分析。首先敌手模型的强弱会对分析造成影响，本节将敌手模型的偏序${{\le }_{\mathcal{A}}}$表示敌手攻击能力的强弱。
+
+	\begin{definition}{(敌手攻击模型偏序)}
+
+
+	通过可达状态来定义敌手攻击模型的偏序为：
+	  \[Adv{{\le }_{\mathcal{A}}}Adv'\equiv \forall P,R,RS\left( P,Adv,R \right)\subseteq RS\left( P,Adv',R \right)\]
+
+	\[Adv{{=}_{\mathcal{A}}}Adv'\]当且仅当$Adv{{\le }_{\mathcal{A}}}Adv'$且$Adv'{{\le }_{\mathcal{A}}}Adv$。
+
+
+\end{definition}
+
+给定一个状态属性$\phi$，一个协议在模型中满足属性 必然意味着在更弱的模型中也满足属性$\phi$。严格的说，如果$Adv{{\le }_{\mathcal{A}}}Adv'$，那么对所有协议 $P$和状态属性$\phi$，$sat\left( P,Adv',\phi  \right)\Rightarrow sat\left( P,Adv,\phi  \right)$
+增加敌手规则会导致更多的迁移关系，从而有更多的可达状态，因此给出以下定理：
+\begin{theorm}{增加敌手规则}
+
+设$r$是一个敌手规则并且$Adv$是一个敌手模型，则$Adv{{\le }_{\mathcal{A}}}Adv\cup \{r\}$。
+为了分析某些属性，只需要考虑测试会话的迹。
+\end{theorm}
+
+同时，攻击规则之间是相互独立的，将其形式化表示为：
+
+\begin{theorm}{（攻击规则的独立性）}
+
+$\left(r=\mathrm{LKR}_{\text {aftercorrect }} \wedge \mathrm{LKR}_{\text {after }} \in A d v\right) \Leftrightarrow\left(A d v \backslash\{r\}=_{\mathcal{A}} A d v \cup\{r\}\right)$
+
+\end{theorm}
+
+
+\textbf{证明(充分性)} 
+
+设$r = LKR_{aftercorrect},LKR_{after}\in Adv$。每个用到$LKR_{aftercorrect}$的迁移都可以用$LKR_{after}$表示。因此两边的可达状态的集合是等价的，因此$(Adv/{r}=_{A}Adv\cup {r})$ 。
+
+\textbf{（必要性）}
+
+设$(Adv/\{r\}=_{\mathcal{A}} A d v \cup\{r\})$。假设$r\neq LKR_{aftercorrect}$，则有只能通过$r$标记的状态迁移。即使$LKR_{aftercorrect}\in Adv$，也有能不需要符合会话的协议，即$LKR_{aftercorrect}$不能标记却能通过$LKR_{after}$标记。矛盾，因此$r=LKR_{aftercorrect}$。假设$LKR_{aftercorrect}\notin Adv$，则有状态迁移通过$r$而不是$Adv/{r}$标记，这与$(Adv/{r}=_{A}Adv\cup {r})$矛盾。因此$r = LKR_{aftercorrect},LKR_{after}\in Adv$，得证。
+
+要评估某些安全属性，只需要考虑直到测试会话结束的迹是否仍满足该属性即可，因此定义测试后不变量属性。
+\begin{definition}{(测试后不变量属性)}
+
+
+定义测试后不变量属性的集合为所有状态属性$\phi \in \Phi $满足：
+	  \[\begin{aligned}
+  & \forall P,R,Adv,\forall \left( tr,IK,th,{{\sigma }_{Test}} \right)\in RS\left( P,Adv,R \right).th\left( Test \right)=\left\langle _{{}} \right\rangle \Rightarrow  \\
+ & \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \forall s.\left( tr,IK,th,{{\sigma }_{Test}} \right)\to _{P,Adv,{{R}_{Test}}}^{*}s\Rightarrow \left( \phi \left( \left( tr,IK,th,{{\sigma }_{Test}} \right) \right)\Leftrightarrow \phi \left( s \right) \right). \\
+\end{aligned}\]
+\end{definition}
+定义中的存活性就是一个测试后不变量，这是因为在测试线程结束后的状态迁移不影响该属性。其他认证性诸如不同形式的一致性或同步性都是测试后不变量，但机密性不是这种属性。
+\begin{theorm}{测试后不变量属性与敌手能力}
+ 设$r$是一个敌手规则并且$\phi$是一个测试后不变量属性。则对所有协议$P$和敌手模型$Adv$，满足：
+	 \[r\in \left\{ LK{{R}_{aftercorrect}},LK{{R}_{after}} \right\}\wedge sat\left( P,Adv,\phi  \right)\Rightarrow sat\left( P,Adv\cup \left( r \right),\phi  \right)\]
+\end{theorm}
+	这个定理使得$LK{{R}_{aftercorrect}},LK{{R}_{after}}$只能在测试线程结束后开始新的状态迁移。该定理遵循的是$LKR_{aftercorrect}$和$LKR_{after}$仅在测试线程已结束的那些状态下启用新的状态迁移。 
+
+
+
+
+%\section{反向推理验证算法研究}
+%\subsection{反向推理验证算法}
+%对于协议的某些模式可以通过直接构造协议迹包含此模式，这类模式称为可实现模式。将表示空迹集的模式称为空模式。将包含一些无法在迹中显示的结构的模式成为冗余模式。
+	%%%验证算法的基本思路是构造基于模式的反向推理验证方法，反向构造攻击模式。利用一个模式表示一组迹（比如所有破坏机密性的迹）的集合的性质，如果这类模式是不可实现的，那么必然有 集中事件项的原点未知。然后通过该项的将所有可能原点实例区分，能够得到一个有限的模式集合。每个新模式都包含一个箭头区分该项的来源或新的事件。重复此步骤，丢弃与得到的空模式与冗余模式，直到得到一组可实现模式，这意味着存在一组迹能够构造出该模式。对于检验某一项的安全属性，这样一种可构造的模式代表所有攻击方式，一个非空可实现模式表明该安全属性遭到破坏。
+	%为了保证算法最终停机，需要对搜索树进行限制。由于模式的任何迹都包含至少一个用户事件，搜索树的扩张最终只包含迹的更多运行。因此可以通过限制运行数来保证该算法停机。在实际中，该算法通常会在达到限制数之前就达到停机。
+	%设符号 表示运行数限制已达到。反向推理验证算法$REFINE$可以表示为：
+
+%\[Protocol\times Pattern\times N\rightarrow P(Pattern)\cup {\perp}\]
+%给定一个协议$P$，其模式$pt$，整数$m$表示限制数，那么该算法能够返回一组可实现模式集$S$，即\[REFINE(P,pt,m)=S\],其中，$S$中所有模式都是可实现的。\[\forall pt'\in S\cap Pattern:realisable(pt')\]
+
+%其次，若$\bot$不在$S$中，可实现模式集与输入模式表示相同的迹的集合。
+ %\[\bot \notin S\Rightarrow traces(P,pt)=\bigcup\limits_{pt'\in S}{traces(P,pt's)}\]
+%若$\bot$在$S$中，初始模式的任何迹要么在结果中出现，要么迹长于限制数$m$。
+%\[\begin{aligned}
+%  & \bot \in S\Rightarrow \forall tr\in traces(P,pt): \\
+%\end{aligned}\]
+
+
+\section{拓展敌手模型形式化验证及结果分析}
+
+本节利用拓展的敌手模型对已经被证明为安全的HMQV协议进行形式化分析，观察该协议在拓展敌手模型下是否仍安全，以验证该拓展敌手模型的有效性。
+
+	由于HMQV协议中的模幂运算的代数属性，会话密钥由双方独立计算。敌手在没有双方的长期私钥时无法计算出双方的会话密钥。HMQV协议已经在传统的敌手模型中被证明是安全的，该模型将HMQV的局部状态定义为DH密钥交换生成的随机值。
+工具支持通过定义的敌手规则，对敌手模型进行了拓展，利用安全协议符号验证工具Scyther，可以自动化地分析一组协议。例如通过拓展的敌手模型，可以对HMQV协议进行描述。
+\subsection{形式化验证}
+
+通过Scyther工具，建立HMQV协议规范模型，并对协议的会话密钥的机密性建立安全声明，Scyther工具将检查该协议是否满足该声明。
+该协议模型的Scyther输入如下:
+
+
+\begin{lstlisting}
+// Hash functions
+hashfunction h1,h2,gexp,exp,KDF,H;
+
+// Addition, multiplication
+// For now, simply hashes
+hashfunction mult,add;
+
+/*
+ * Hack to simulate public knowledge of public keys.
+ */
+protocol @publickeys(PK)
+{
+	role PK
+	{
+		send_!1(PK,PK, gexp(sk(PK)));
+	}
+}
+
+/*
+ * Hack to simulate g^ab = g^ba inside terms.
+ */
+protocol @exponentiation(RA,RB,RC)
+{
+	role RA
+	{
+		var X,Y, T1,T2: Ticket;
+
+		recv_!1(RA,RA, h2(
+		  exp(gexp(X),Y),
+		  T1, T2, RA,RB
+		  ));
+		send_!2(RA,RA, h2(
+		  exp(gexp(Y),X),
+		  T1, T2, RA,RB
+		  ));
+	}
+	role RB
+	{
+		var X,Y, T1,T2: Ticket;
+
+		recv_!3(RB,RB, h2(
+		  T1,
+		  exp(gexp(X),Y),
+		  T2, RA,RB
+		  ));
+		send_!4(RB,RB, h2(
+		  T1,
+		  exp(gexp(Y),X),
+		  T2, RA,RB
+		  ));
+	}
+	role RC
+	{
+		var X,Y, T1,T2: Ticket;
+
+		recv_!5(RC,RC, h2(
+		  T1, T2,
+		  exp(gexp(X),Y),
+		  RA,RB
+		  ));
+		send_!6(RC,RC, h2(
+		  T1, T2,
+		  exp(gexp(Y),X),
+		  RA,RB
+		  ));
+	}
+}
+
+protocol @addmult(I,R)
+{
+	role I
+	{
+		var X,Y: Ticket;
+
+		recv_!1(I,I, add(X,Y) );
+		send_!2(I,I, add(Y,X) );
+	}
+	role R
+	{
+		var X,Y: Ticket;
+
+		recv_!3(R,R, mult(X,Y) );
+		send_!4(R,R, mult(Y,X) );
+	}
+}
+
+protocol @keyswap(I,R)
+{
+	role I
+	{
+		var x,y: Nonce;
+		recv_!1(I,I, KDF(exp(mult(gexp(y),exp(gexp(sk(R)),H(gexp(y),I))),add(x,mult(H(gexp(x),R),sk(I))))) );
+		send_!2(I,I, KDF(exp(mult(gexp(x),exp(gexp(sk(I)),H(gexp(x),R))),add(y,mult(H(gexp(y),I),sk(R))))) );
+	}
+}
+
+// The protocol description
+
+symmetric-role protocol HMQV-twopass(I,R)
+{
+	role I
+	{
+		fresh x: Nonce;
+		var Y: Ticket;
+
+		send_1(I,R, gexp(x) );
+		recv_2(R,I, Y );
+
+		claim(I,SKR,    KDF(exp(mult(Y,exp(gexp(sk(R)),H(Y,I))),add(x,mult(H(gexp(x),R),sk(I))))) );
+	}
+
+	role R
+	{
+		fresh y: Nonce;
+		var X: Ticket;
+
+		recv_1(I,R, X );
+		send_2(R,I, gexp(y) );
+
+		claim(R,SKR,    KDF(exp(mult(X,exp(gexp(sk(I)),H(X,R))),add(y,mult(H(gexp(y),I),sk(R))))) );
+	}
+}
+
+\end{lstlisting}
+
+
+	在该模型中，$ticket$类型的变量$alpha$和$beta$为所有可能的项。抽象函数$exp$和$exp^g$表示两个项的模乘。 $claim$事件$claim(I,SKR)$  和 $claim(R,SKR,\ldots)$ 表示需要验证的安全属性。
+\subsection{结果分析}
+通过Scyther验证Dolev-Yao模型及改进的敌手模型在分析HMQV协议安全性的增强。
+传统Dolev-Yao敌手模型下，该协议两条安全性断言都正确，验证结果为协议安全，如图\ref{fig-dolev-yao}所示。
+ \begin{figure}[htp]
+	\centering
+	\includegraphics[width=13cm]{data/content/chap03/success}
+	\caption{传统敌手模型验证HMQV协议}
+	\label{fig-dolev-yao}
+\end{figure}
+
+	而在敌手短期数据攻击模型下，该协议两条安全性断言错误，验证结果为不正确。这说明在敌手短期数据攻击模型下，该协议规范不满足机密性，存在敌手攻击路径以获得协议会话密钥。
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=13cm]{data/content/chap03/fail}
+	\caption{拓展敌手模型验证HMQV协议}
+	\label{fig-gaijin}
+\end{figure}
+
+同时工具构造出了对断言的攻击路径。图\ref{fig-gongjifasong}与图\ref{fig-gongjijieshou}分别是敌手在HMQV协议发送端与接收端的攻击路径。
+   \begin{figure}[htp]
+	\centering
+	\includegraphics[width=13cm]{data/content/chap03/attack1}
+	\caption{HMQV协议发送端攻击路径构造}
+	\label{fig-gongjifasong}
+\end{figure}
+
+敌手能够通过中间人攻击的方式，对发送端与接收端进行攻击。
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=11cm]{data/content/chap03/attack2}
+	\caption{HMQV协议接收端攻击路径构造}
+	\label{fig-gongjijieshou}
+\end{figure}
+
+
+
+对该攻击进行详细分析后发现在敌手长期密钥攻击模型下，如果会话密钥的最终的幂运算是在本地运算的话，HMQV协议的会话密钥是能够被敌手获得的，证明该协议在敌手短期数据攻击模型下是不安全的。
+
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=15cm]{data/content/chap03/gongjilujingattack}
+	\caption{HMQV攻击示意图}
+	\label{fig-gongjilujing}
+\end{figure}
+
+其攻击示意图如\ref{fig-gongjilujing}。
+
+敌手能够重复利用这次幂运算的输入在未来的会话中冒充别的节点。攻击开始在B接收消息$g^z$ 并以为是A发送的。这个消息可以是其他节点或敌手生成的。接着B生成并发送 $X=g^x$ ，这能被敌手捕获到。线程Thread1不是测试线程的参与线程。因此敌手可以攻击Thread1的状态，获取$x+db$。敌手将精心构造的$X$发送给A的测试线程。A计算并发送$Y=g^y$，AB根据$X,Y$计算出会话密钥。敌手捕获$Y$并计算$H((YA^{e_1} ))^{x+db}$，这就是测试线程的会话密钥。
+
+\section{本章小结}
+本章针对传统形式化方法中敌手模型描述能力不足的实际问题，提出了基于操作语义的敌手模型拓展，利用敌手攻击规则拓展的表示能力，建立了适用于符号方法的具有密码学攻击能力的敌手模型。所取得的研究成果包括：
+
+（1）提出了基于操作语义的敌手模型拓展，该模型能够表达比传统敌手模型更强大的攻击能力，找到传统Dolev-Yao敌手模型中认为安全的协议的安全漏洞。操作语义可以将敌手攻击能力在相关协议模型中形式化表示，有利于进一步丰富对敌手攻击的描述能力，拓展了敌手攻击规则，建立了敌手长期密钥攻击模型以及敌手短期数据攻击模型。通过形式化工具Scyther对HMQV协议验证，验证结果表明，该模型能找到传统Dolev-Yao敌手模型中认为安全的HMQV协议的安全漏洞，在敌手短期数据攻击模型下，HMQV协议的会话密钥是能够被敌手获得的，证明该协议在拓展的敌手模型下是不安全的。
+
+（2）对拓展敌手模型下可验证安全属性建模，将协议可验证的安全属性建立形式化定义，并将安全属性分解为基本安全属性和敌手模型的结合，并对敌手模型与安全属性之间的联系进行了形式化的分析，为协议安全属性建模提供了统一视角。
+

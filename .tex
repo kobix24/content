@@ -1,0 +1,57 @@
+\begin{abstract}
+	
+随着信息化的不断进步和发展，个人与社会对网络安全的要求日益强烈。安全协议就是通过密码学的方法为通信双方提供安全保证的分布式算法，它是当前社会信息网络安全的基础技术之一。安全协议对错误十分敏感，一旦存在安全缺陷，即安全协议没有满足它声明的安全性，将会对信息安全产生极大威胁。但是安全性已经被形式化技术证明了的协议，也频繁出现安全漏洞。如何通过形式化技术对安全协议进行全面和系统的安全性分析，是现实中亟需解决的问题。
+论文围绕安全协议形式化分析技术展开研究，利用约束求解系统，对消息递归的安全协议进行了安全性分析。针对符号方法中敌手描述能力不足的问题，拓展了传统Dolev-Yao敌手模型。针对安全协议实现状态机学习中的测试序列生成问题，提出了改进的测试序列生成算法。为了验证协议实现状态机的安全属性，提出了基于模型检测的协议实现分析技术。
+
+
+
+
+论文的主要研究工作及创新点包括以下四个方面：
+
+%针对常规的符号执行方法无法处理多数据包输入的问题，从提高测试深度出发，提出了一种多数据包选择符号执行方法。
+论文针对软件安全性分析的测试深度问题，
+提出了一种基于数据包选择符号执行的深度测试方法。
+首先对数据包输入进行符号化处理，拦截网络相关的系统函数调用，将符号数据包注入测试目标。其次应用选择符号执行方法，重点测试安全敏感区域，缓解状态空间爆炸。随后扩展到多数据包输入的情况，进行深度的测试。实验结果表明，该方法缓解了符号执行的状态空间爆炸问题，可以测试到协议软件的深层状态，提高了协议软件安全性分析的代码覆盖率和测试效率。
+
+%将选择符号执行方法用于协议软件测试，提出了一种数据包选择符号执行方法。随后，在数据包选择符号执行方法的基础上进行改进，使之可以处理多次数据包的输入，提出了一种多数据包选择符号执行方法，提高了协议软件安全性分析的测试深度。
+
+%针对常规的符号执行方法无法快速到达指定协议状态的问题，从提高测试效率出发，
+论文针对协议软件安全性分析的特定状态测试覆盖问题，
+提出了一种模型导向的符号执行测试方法。首先根据状态机学习算法，对协议软件进行状态机模型推断。然后基于推断出的协议模型，引导协议软件运行到指定的协议状态，并在该状态附近进行符号执行测试，实现对指定协议状态的高效测试。实验结果表明，该方法缓解了符号执行的状态空间爆炸问题，可以快速测试到深层的协议状态，提高了协议软件安全性分析的测试效率。
+
+
+%提出了一种基于模型的导向符号执行方法。该方法利用协议软件的交互特性和已知的协议规范信息，首先，对协议软件进行协议状态机模型推断，提出了一种针对协议软件的高效状态机学习算法。然后，利用协议模型对协议软件进行导向性符号执行，使得符号执行可以快速到达需要测试的协议状态，缓解了符号执行的状态空间爆炸问题，提高了协议软件安全性分析的测试效率。
+
+%针对常规的符号执行方法无法联合测协议软件的接收端与发送端的问题，从发现互操作性方面的安全问题及缩减状态空间的角度出发
+论文针对协议软件安全性分析的交互测试问题
+，提出了一种基于联合符号执行的交互测试方法。该方法结合协议软件接收端与发送端的约束条件，对两端进行联合符号执行,缩减符号执行的状态空间。实验结果表明，该方法缓解了符号执行的状态爆炸空间问题,提高了协议软件安全性分析的交互测试能力和测试效率，可以发现协议软件交互测试方面的安全问题。
+
+
+%针对符号执行方法需要根据协议规范人工构造输入的问题，从提高自动化程度的角度出发
+论文针对协议软件安全性分析的自动化问题
+，提出了一种面向高覆盖的自动化模糊测试方法。首先该方法通过块状协议描述语言自动构建目标协议模型；然后结合遗传算法的演化机制，优化模糊测试的测试用例生成过程。实验结果表明，该方法可有效提升模糊测试的代码覆盖率，实现对协议软件安全性的高效自动化分析。
+
+%针对符号执行方法需要根据协议规范人工解析协议格式，从补充协议软件符号执行技术、发现更多安全性问题的角度出发，提出了一种基于流量分析和逆向工程的协议软件模糊测试方法。首先，分析了常规模糊测试方法存在的问题。然后，分别研究了基于模块化协议描述语言的流量分析方法、基于遗传算法模型的逆向工程方法，并将两个方法有机结合起来。实验结果表面，该方法提高了模糊测试的代码覆盖率，提高了协议软件安全性分析的测试效率，对于符号执行方法中约束不可求解的情况是一个很好的补充。
+
+\end{cabstract}
+\ckeywords{协议软件; 符号执行；模糊测试；状态机模型；遗传算法}
+
+\begin{eabstract}
+The protocol software is widespread and ubiquitous in network applications with the rapid development of Internet. At the same time, there are more and more attacks against the protocol software, which mostly are remote attacks exploiting the vulnerabilities of protocol software. The consequences are extremely serious. However, it has always been a very difficult problem to analyze the security of protocol software. Protocol software manufacturers often utilize a variety of techniques to analyze the security to prevent the protocol software from being attacked, hoping to find and eliminate as many vulnerabilities as possible. Meanwhile, the hackers may also try to discover the security vulnerabilities and make use of them to conduct attacks. Therefore, it is of great significance to conduct the research on efficient security analysis of protocol software for timely detecting the vulnerabilities and preventing the hacker's attacks.
+
+This thesis investigate key techniques for efficient protocol software security analysis. It is well known that current security analysis techniques for protocol software suffers from many problems, such as low universality, low test depth, low test efficiency and low degree of automation, etc.  We also lack automated methods for efficient security analysis of protocol software. The conventional symbolic execution method is widely utilized for the security analysis of protocol software, however, it can only test the single packet input with shallow test depth. The conventional fuzz testing method is also applied to the security analysis of protocol software, but it is characterized with the strong system randomness and low code coverage. Given these problems in the security analysis of protocol software, this thesis studies the depth test method for multiple-input state protocol software and also the efficient test methods for protocol software. The goal is to improve the universality and the automation degree of security analysis of protocol software.
+
+The main work and novelty of this paper include the following aspects:
+
+A symbolic execution method based on multiple-packet selection is proposed. This method combines the selective symbol execution method, which enables the symbolic execution method to deal with the multiple packet inputs of the protocol software. Firstly, the input data packet is processed symbolically, and the system calls related to network applications are intercepted. After that, the symbolic input data is forwarded to the testing target. Then, an improvement is made based on the data-packet selection symbol execution method to make it deal with the inputs of multiple packets; A multiple data-packet selective symbolic execution method is proposed, which improves the test depth of the security analysis of protocol software.
+
+A model-based directed symbol execution method is proposed. This method utilizes the interaction characteristics of the protocol software and the known protocol specification information. Firstly, an efficient state machine learning algorithm for protocol software is proposed to deduce the protocl state machine model. Then, the protocol model is utilized to guide symbolic execution of the protocol software, so that the symbolic execution engine can quickly reach the protocol state that needs to be tested. The new method alleviates the problem of state-space explosion of symbolic execution, and improves the test efficiency of the security analysis of protocol software.
+
+A path reduction method based on joint symbolic execution is proposed. This method reduces the path-space of symbolic execution to alleviate the path space explosion problem and improves the test efficiency of security analysis of protocol software by synchronizing symbol executions of sender and receiver of protocol software as well as taking into account the constraints between the sender and receiver, so that the security issues of protocol software in interoperability can be found.
+
+A fuzz testing method for protocol software based on modular protocol specification language  and genetic algorithm is proposed. The modular protocol description language and the genetic algorithm model are combined to improve the code coverage of fuzz testing and improve the test efficiency of the security analysis of protocol software. As a complement to symbolic execution method, this new method can be utilized in the case where the constraints of symbolic execution cannot be solved.
+
+
+\end{eabstract}
+\ekeywords{protocol software; symbolic execution; fuzz testing; state machine model; flow analysis; reverse engineering}
+

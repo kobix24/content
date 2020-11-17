@@ -1,0 +1,518 @@
+%!TEX root = C:\Users\kobix\Documents\gradu\thesis1\thesiscc.tex
+\chapter{基于模型检测的协议实现分析技术研究}
+
+模型检测作为形式化分析技术的一种重要技术，广泛应用于安全系统以及程序测试中。模型检测通过穷尽系统的状态空间是否可以达到某些特殊状态,以判断其能否达到声明安全期望。但是利用模型检测方法直接对协议实现进行验证是不可行的\cite{jhala2009software}，这是由于协议实现的高并发性，会导致搜索空间产生状态爆炸。
+
+
+本章针对上述问题，结合第\ref{chap-statemachine}章的状态机学习算法，提出了基于模型检测的协议实现分析技术。本方法以协议实现的状态机为输入，通过模型检测器对安全属性进行验证，能够将验证结果分为属性满足和不满足。对验证过程中产生反例通过伪反例检查和反例重放两步进行筛选，确保该反例为真实执行。基于协议实现，建立了安全属性、密钥交换属性以及函数属性3类属性，通过对TLS实现库的验证进行分析。对于不满足的安全属性定义的协议实现，通过反例检测器，剔除伪反例，找到其对应于协议实现库的协议真实执行。
+
+
+\section{符号模型检测技术介绍}
+
+模型检测在计算机中的具体实现方法有两种，一种是显式表示有限状态迁移
+系统的每个状态和迁移关系；另一种是使用符号隐式表示状态集和迁移关系，这
+种方法也称为符号模型检测。模型验证器SPIN使用第一种方法，模型验证器
+NuSMV使用第二种方法。一般来说，符号模型检测方法能解决具有更大状态空
+间的系统。McMillan等将有序二叉决策图(Ordered Binary
+Decision Diagram，OBDD)技术应用到模型检测中，建立了符号模型检测，有效地缓解了
+状态爆炸问题\cite{Miller1990}。符号模型检测强调的不是表示单个状态，而是用符号表
+示状态的集合。目前，符号模型检测技术中符号表示就是布尔函数表示。下面详
+细介绍符号模型检测技术。
+
+\subsection{有序二叉树决策图}
+
+布尔函数有很多种表示方法，如真值表、析取范式、命题公式、BDD等，
+有些表示方法需要很多存储空间，但在其上进行某些运算简单，另一些则需要的
+存储空间少，但在其上进行某些运算复杂。BDD表示能在存储空间和运算复杂
+度间找到一种平衡。
+
+BDD(二叉决策图，Binary Decision Diagram)是布尔公式的一种表示方法。
+BDD定义：BDD是一个具有唯一初始结点的有向无环图，其所有终端结点标
+记为0或1，所有非终端结点用布尔变量标记。每个非终端结点恰好有两条边指
+向其他结点：一个标记为0，称为O-分支；一个标记为l，称为1-分支。图中一
+般用虚线表示O-分支，实线表示1-分支。
+
+在BDD上面限定布尔变量顺序，并进行化简消去冗余结点得到的图称为
+ROBDD(Reduced Order Decision Diagram,简约有序二叉决策图)。布尔变量序
+对于ROBDD的结点个数有很大的影响，若选择了好的布尔变量序，那么ROBDD
+结点的个数会很少。
+
+图\ref{fig-boolbdd}所示是布尔函数$f(x_1 y_1 x_2 y_2)=(x_1\Leftrightarrow y_1)\cap(x_2\Leftrightarrow y_2)$的BDD表示(左
+边)和ROBDD(限定变量序$x_1 y_1 x_2 y_2$)表示(右边)。
+
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=13cm]{data/content/chap05/boolbdd}
+	\caption{布尔函数$f(x_1 y_1 x_2 y_2)=(x_1\Leftrightarrow y_1)\cap(x_2\Leftrightarrow y_2)$的BDD表示和ROBDD表示}
+	\label{fig-boolbdd}
+\end{figure}
+
+可以看到ROBDD比BDD，少了很多结点，这主要是因为，在限定一定变
+量序的前提下通过化简消去了冗余结点。
+在模型检测领域的文献中，ROBDD常简称为BDD，本章也采用这样的惯例，
+若没有特别说明，BDD都表示ROBDD。
+BDD不仅能紧凑地表示布尔函数，也存在着高效的算法实现布尔函数的各
+种操作，如$restrict、apply、exists$算法等。下面介绍在模型检测算法中，经常
+会用到的BDD算法，这些算法在BDD的软件实现中都有提供。
+先了解两个重要的定义：$f[0/x]$定义为将$x$在厂中的所有出现替换为0所得
+到的布尔函数；$f[1/x]$定义为将$x$在厂中的所有出现替换为1所得到的布尔函数。
+$f[0/x]$和$f[1/x]$称为$f$的置换(restrict)。
+restrict算法实现了$f[0/x]$和$f[1/x]$，使用接口一般是：$restrict(0,x,B_f)$和
+$restrict(1,x,B_f)$，其中$B_f$是布尔函数$f$的BDD表示。输出结果分别是$f[0/x]$和$f[1/x]$的BDD表示。
+$apply$算法用于实现最基本的布尔函数的运算，如$\bullet,+,\oplus$，求补可以通过与1
+进行异或实现。$apply$算法一般的使用接口是$apply(op,B_f,B_g)$，其中$B_f$是布尔
+函数$f$的BDD表示，$B_g$是布尔函数g的BDD表示，op为布尔运算，如$\bullet,+,\oplus$
+
+$exists$算法实现$\exists x.f$操作($\exists x.f$定义：$\exists x.f=f[0/x]+f[1/x]$)，它的调用
+接口一般是$exists(x_i,B_f)$，其中$B_f$是布尔函数$f$的BDD表示。推广得，$\exists \hat(x).f$
+示$\exists x_1\exists x_2\ldots\exists x_n.f$，即$\hat(x)$表示$(x_1,x_2,\ldots,x_n)$。根据定义，$exists$算法可以由$apply
+算法和restrict$算法实现。$\exists x.f$有个对偶的操作$\forall x.f$，，其定义为
+$\forall x.f=f[0/x]\bullet f[1/x]$。
+
+一般来说，BDD表示布尔函数需要的结点非常少，而且在这种表示下存在
+着高效的布尔函数操作。如果Kripke结构中的状态集合和迁移关系能转化为
+BDD表示，模型检测算法能通过BDD运算实现，那么就有可能减少存储空间而
+缓解模型检测中的状态爆炸问题。基于BDD的符号模型检测就是利用了这一点。
+基于BDD的符号模型检测技术的核心是：用BDD隐含表示Kripke结构，然后实现模型检测算法，也就是，第一步要先用BDD隐式地表示Kripke结构的
+状态、迁移关系；第二步以BDD作为基本的数据结构实现2．2节中的模型检测
+算法。对于第二步，在2．2节了解到LTL的模型验证算法可以转化为CTL的模
+型验证算法，所以只要考虑BDD作为基本的数据结构如何实现CTL模型检测算
+法就行了。
+
+\subsection{状态与迁移关系的符号表示}
+本节分别介绍模型检测算法中状态与迁移关系的符号表示。
+
+\textbf{状态的符号表示}
+
+设Kripke结构$M=(S,I,R,L)$。考虑状态集合$s$所有子集如何用布尔函数表
+示(即符号表示)。
+先将$S$中的元素编码为布尔值表示，这可以通过标记函数$L$实现，因为标记
+函数$L$标注了状态中成立的原子命题。假定给原子命题集合的各个元素一个
+固定的顺序，比如说$(p_1,p_2,\ldots,p_n)$，$n$应该满足$2^{n-1}<|S|\leq 2^n$，若原子命题的个
+数少于$n$，通过增加额外的原子命题直到原子命题个数等于$n$，这样布尔向量
+$(x_1,x_2,\ldots,x_n)$就能表示每个$s\in S$。如果$p_i \in L(s)$，则$x_i$等于1，否则等于0，根
+据这样的方法就得到某个$s\in S$的布尔值表示。子集的表示，可以通过对其元素
+进行布尔或运算实现。
+接着转化为布尔函数表示。对每个$s\in S$用布尔函数$f(l_1,l_2,\ldots,l_n)=l_1l_2\ldots l_n$
+表示，其中如果$x_i$等于l，则$l_i$等于$x_i$，如果$x_i$等于0，则$l_i$等于$\bar{x}$。
+例如，对于图\ref{fig-kripke}表示Kripke结构，固定原子命题的序为$p_1,p_2,S$中一些
+子集的布尔函数表示如下：
+
+$\oslash:f_\oslash;{s_0}:fs_0=x_1\bar{x_2};{s_1}:fs_1=\bar{x_1}x_2;{s_2}:fs_2=\overline{x_1x_2}$
+
+$(s_0,s_1):fs_0s_1=x_1\bar{x_2}+\bar{x_1}x_2$
+
+$S:f_S=x_1\bar{x_2}+\bar{x_1}x_2+\overline{x_1x_2}$
+
+因为BDD是布尔函数的一种表示方法，上面已经得到了状态集的布尔函数，
+从而也就完成了到BDD的转化。
+
+\textbf{迁移关系的符号表示}
+
+考虑Kripke结构$M=(S,I,R,L)$中迁移关系$R$如何用布尔函数表示。$R$是
+$S\times S$的子集，可以采用上面同样的思路，用布尔函数表示$R$，这时需要布尔向
+量$(x_1,x_2,\ldots,x_n)$的一个副本$(x'_1,x'_2,\ldots,x'_n)$。于是，迁移关系$s\to s'$就可以用布尔
+向量对$((x_1,x_2,\ldots,x_n),(x'_1,x'_2,\ldots,x'_n))$表示，其中若$p_i\in L(s)$，则$l_i$等于$x_i$，否则
+等于0，类似的若$p_i\in L(s')$，则$x'_i$等于1，否则等于0。相应的布尔函数表示是$f(l_1,l_2,\ldots,l_n,l'_1,l'_2,\ldots,l'_n)=l_1,l_2,\ldots,l_n,l'_1,l'_2,\ldots,l'_n$，其中如果$x_i$等于1，则$l_i$等于$x_i$，如果$x_i$
+等于0，则$l_i$等于$\bar{x'_i}$，如果$x'_i$等于1，则$l_i$等于$x'_i$，如果$x'_i$等于0，则$l'_i$等于$\bar{x'_i}$；。
+对于迁移关系的集合(如整个迁移关系$R$)，通过布尔或运算集合中各个元素的
+布尔函数得到。
+例如，对于图\ref{fig-kripke}表示Kripke结构，固定原子命题的序为$p_1,p_2,R$的布尔
+函数表示为：
+
+$R:f_R=\overline{x_1x_2x'_1x'_2}+\overline{x_1x_2}x'_1\bar{x'_2}+x_1\overline{x_2x'_1}x'_2+\bar{x_1}x2\overline{x'_1x'_2}$
+\subsection{BDD实现模型检测算法}
+
+要想用BDD实现CTL模型检测算法，就必须要实现上文提到集合的交、
+并、补运算和$pre_\exists$、$pre_\forall$运算。
+
+集合的交、并和补运算可以分别用布尔函数的与、或和非运算实现，BDD
+的apply算法可以方便的实现这三种操作。
+
+运算$pre_\exists$的定义是：$pre_\exists(X)={s\in S|存在s',(s\to s'且s'\in X)}$，即$pre_\exists$以
+状态集合X为输入，返回可以通过迁移关系迁移进$X$的状态集合。
+
+运算$pre_\forall$的定义是：$pre_\forall(X)={s\in S|对所有的s',(s\to s'蕴含s'\in X)}$，即$pre_\forall$
+以状态集合$X$为输入，返回仅一次通过迁移关系迁移进$X$的状态集合。
+
+$pre_\forall (X)$运算可以用补和$pre_\forall$运算表示为：$pre_\forall (X)=S - pre_\exists(S-X)$，
+所以只要考虑使用BDD的算法实现$pre_\exists(X)$即可。
+根据$pre_\exists(X)$的定义，使用如下方法，用BDD算法实现$pre_\exists$。设给定集合$X$的
+BDD表示$B_X$和迁移关系的BDD表示$B_R$：
+\begin{itemize}
+
+	\item $B_X$中的变量$(x_1,x_2,\ldots,x_n)$改名为其副本$(x'_1,x'_2,\ldots,x'_n)$形成新的BDD表示$B_X'$
+
+	\item 使用$apply$算法和$exists$算法，计算$exists((x'_1,x'_2,\ldots,x'_n),apply(\bullet,B_R,B_X'))$
+
+\end{itemize}
+
+
+\subsection{NuSMV模型检测工具概述}
+
+
+NuSMV是第一款基于BDDs的模型检测器，它是一个开放的架构验证工具的模型检查器,它能够可靠地验证工业设计的可
+靠性,可以作为专用的检测工具的核心,也可作为一个验证技
+术平台,应用于其他研究领域。NuSMV提供以下功能:
+\begin{itemize}
+\item 交互。除了通常的SMV的批处理方式,NuSMV提供了一个文字交互
+界面。
+
+\item 调用运算。通过这个界面,用户可以通过敲入各种系统命令从面激活各
+种NuSMV计算步骤。这些运算步骤,可以单独调用,也可以取消。
+
+\item LTL模型检验。NuSMV可以支持LTL规约。
+
+\item SAT。支持SAT为基础的有界模型检测。
+
+\end{itemize}
+
+
+根据要检测的系统而选择特定的模型检测器非常重要的,这就要求对一个特别的规约语言(可能是属性),
+来开发翻译器和编译器,整合当下有效的技术(如BDD等)来处理状态爆炸的
+问题。
+NuSMV被设计成一个开放式的系统,不仅开源而且很容易修改,定制
+和扩展。系统结构是以模块的形式构建和组织的。每一个模块执行一套功能并
+且可以通过精确定义的接口和别的模块通信。让系统之间的后端和前端明确的
+区分,以使人们有可能重新使用内部模块,而不用考虑描述模型的输入语言。NusMV通过预处理独立于模型检查引擎进行
+用于验证。
+ 在此之后，用户可以选择是否应用基于BDD
+或基于SAT的模型检测。
+NuSMV的体系结构如图\ref{figure-NuSMV}所示,具体由以下几个模块构成。
+\begin{enumerate}
+\item 内核:内核提供了低级别功能如动态内存分配,操作基本的数据结构(常
+量单元,哈希表)。内核也提供所在的基本BDD原语。可以把NuSMV内
+核当作一个黑盒,其代码的标准被精确的定义。
+\item 解析器:解析器实现路径来处理NuSMV语言编写的文件,检查其语法
+的正确性,并建立一个解析树表示的输入文件的内部格式。
+\item 实例化与布尔编码：例化的子模块处理解析树,执行实例化的声明模块,构建有限状态机(FSM)来
+代表模型。编码子模块的功能是把状态机模型的数据类型和有限的排列进行编码且映射到布尔域成为布尔模型，这样可以消除标量变量。
+这对SMV的所有输入都进行了编码，如有界整数的编码，集合论以及代数函数和谓词的编码。
+\item 影响锥规约：用来规约对模型中每个属性相关部分的分析，这种规约方式能有效提高处理状态爆炸问题的能力。
+\item 基于BDD的模型检测: 基于BDD的表示构造有限状态机（FSM）的模型。 在这一步中，
+可以使用不同的分区方法和策略。随后，存在不同的形式
+可以应用基于BDD的验证：例如可达性分析，公平的CTL模型检查，
+LTL模型检查通过简化到CTL模型检查，计算定量
+模型的特征。
+\item 基于SAT的模型检测：基于约简布尔电路(RBC)构建模型的内部表示，RBC是一种命题公式的表示形式。通过基于SAT的LTL模型执行有界模型检测。如果找到一个命题模型，它对应的是原来模型检测问题的一个反例。NuSMV将每个SAT问题表示为RBC，并转化为合取范式输入值SAT求解器中。在有界模型检测中，NuSMV进入
+循环，通过调用SAT求解器来交错问题生成和解决方案尝试，
+并迭代直到找到解决方案或达到指定的最大边界。
+\end{enumerate}
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=13cm]{data/content/chap04/NuSMV.png}
+	\caption{NuSMV系统结构}
+	\label{figure-NuSMV}
+\end{figure}
+
+
+\section{协议状态机的安全属性建模研究}
+NuSMV模型由一组有限变量与迁移函数一起定义。在规范中的时态逻辑，如CTL和LTL，可以在特定的模型上进行检测，并在给定规范不正确时，生成反例。
+通过学习到的状态机模型作为NuSMV的输入模型。该模型共有三个变量，它们分别对应为输入，输出和状态。图\ref{NuSMV+FSM}举例描述一个Mealy状态机及与其关联的NuSMV模型的对应关系。
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=13cm]{data/content/chap04/FSM+NuSMV.png}
+	\caption{Mealy状态机与关联的NuSMV模型}
+	\label{NuSMV+FSM}
+\end{figure}
+
+通过这样的建模，可以将要验证的属性分为三类：
+\begin{enumerate}
+\item \textbf{安全属性}，这是每层协议的主要安全目标的基础，用于描述通信的安全交互规范，以进行必要的身份认证并保护通信的机密性，如中间人攻击和拒绝服务攻击；
+\item \textbf{密钥交换属性}，用于衡量创建新的会话密钥以检查系统的前向机密性状态，并确保密钥的新鲜性；
+\item \textbf{函数属性}，这是RFC规范中\textbf{应该}和\textbf{必须}有的属性，它将对协议安全产生影响。
+\end{enumerate}
+
+这里实际上并不是对协议实现代码进行直接的模型检测，而是对受测系统的抽象模型的属性进行检测。因此当对学习到的模型的模型检测结果进行解释时应当小心；其次即使某些属性对于抽象模型不成立时，也需要对模型检测器生成的反例在实际代码上进行运行来验证此反例是否在代码上存在实际运行。如果反例不正确，那么就证明了学习出来的模型不正确。
+
+在TLS中，上层服务依赖于底层提供的安全保证，所以只有当底层安全已完善后才能应用高层服务。例如，只有当密钥交换完成并在传输层建立了安全信道之后才能进行认证服务，否则认证服务将在未加密的信道上运行。因此，认证服务在没有成功进行密钥交换时是不能进行的。
+
+\textbf{安全属性}密钥交换包含三个必须执行的步骤，但这些步骤可能会与其他动作产生交叉。一次成功的认证的前提条件是进行了成功的密钥交换。可以通过输入与输出变量的值来判断密钥交换步骤是否成功完成。通过谓词$hasReqAuth$来表示成功的发送认证请求。定义$O$为$once$算子通过这些原则，定义了如下的安全属性规范：
+\begin{PROPERTY}
+\[
+\begin{aligned}
+&G( hasReqAuth  \rightarrow \\
+O( (inp &= NEWKEYS \wedge out = NO\_RESP) \wedge \\
+O( (inp &= ChangeCipherSpec \wedge out = \_NEWKEYS)\wedge \\
+O(out &= KeyExchange))))
+\end{aligned}
+\]
+\end{PROPERTY}
+
+除了安全连接外，连接层服务也会认为连接后的客户端已经通过认证。通过认证机制确保认证了的客户端已经提供了有效的凭据。为了确保协议实现的安全，必须保证状态迁移没有不需提供有效凭据便能由未认证迁移到认证状态的的路径。首先一个已认证状态必然是信道已经成功建立，其对应谓词为$hasOpenedChannel$。提供有效及无效的凭据对应的输出为$UA\_SUCCESS$和$UA\_FAILURE$。定义$S$为$since$算子。定义如下安全属性：
+\begin{PROPERTY}
+\[
+\begin{aligned}
+G (hasOpenedChannel  ->
+out!= UA\_FAILURE\ S\ out = UA\_SUCCESS)
+\end{aligned}
+\]
+\end{PROPERTY}
+
+\textbf{重协商属性}
+在TLS协议的RFC文档中，密钥重协商是在协议的所有状态中都允许进行的，同时，其执行以后不影响更高层的操作。现在考虑通用的协议状态，\textbf{预认证}状态(已发出认证请求，但还未认证)以及\textbf{已认证}状态。这些可以映射到学习到的状态机模型的多个状态中去。可以形式化定义两种属性，他们分别对应两种状态。可以通过谓词$hasReqAuth$表示已成功发出认证请求，这时就进入预认证状态。连续执行重协商密钥的输入肯定成功，知道连接断开或已经认证，这可以通过属性3表示。
+
+\begin{PROPERTY}
+\[
+\begin{aligned}
+&G\ ( hasReqAuth  ->\\
+X\ ( (inp &= KeyExchange -> out = KeyExchange) \wedge\\
+X\ ( (inp &= ChangeCipherSpec \wedge out = \_NEWKEYS)\wedge\\
+X\ (int &= NEWKEYS -> out = NO\_RESP)))) \ W\\
+&(connLost \vee hasAuth))
+\end{aligned}
+\]
+\end{PROPERTY}
+
+\textbf{函数属性}
+除了以上属性外，还有几种属性可以由RFC文件中归纳得到。首先是$DISCONNECT$输出。通过RFC规定一节点发出这个谓词后，一定不再接受或发送任何信息。
+然而无法判断在实际代码中服务器是否真的停止接受消息，但是可以检测服务器在发出$DISCONNECT$消息后是否还发送消息。因此可以定义一个属性来描述发出$DISCONNECT$消息后的输出。
+\begin{PROPERTY}
+\[
+\begin{aligned}
+G\ ( out &= DISCONNECT ->\\
+X\ G\ (out &= CH_NONE \vee out = CH_MAX | out = NO_CONN))
+\end{aligned}
+\]
+\end{PROPERTY}
+
+RFC文件中规定在发送$KeyExchange$消息后，节点必须不($MUST NOT$)再发送另外的$KeyExchange$或$SR\_ACCEPT$消息，直到它发送一个$NEWKEYS$消息为止。
+这个属性定义为：
+\begin{PROPERTY}
+\[
+\begin{aligned}
+G\ ( out &= KeyExchange ->\\
+X\ ( (out !&= SR\_ACCEPT \wedge out != KeyExchange) W receivedNewKeys)
+\end{aligned}
+\]
+\end{PROPERTY}
+
+RFC声明，如果服务器拒绝服务请求，则它应该($SHOULD$)发送一个合适的$TLS_MSG_DISCONNECT$消息并且必须($MUST$)点开链接。同时，如果它支持服务请求，它必须($MUST$)发送一个$SR\_ACCEPT$消息。
+\begin{PROPERTY}
+\[
+\begin{aligned}
+G\ ( (inp &= SR_AUTH \wedge state != s0) ->\\
+(out &= SR_ACCEPT \vee out = DISCONNET \vee out = NO.CONN)))
+\end{aligned}
+\]
+\end{PROPERTY}
+
+对于认证层的RFC，如果服务器拒绝认证请求，它必须($MUST$)响应$UA\_FAILURE$消息。被拒绝的请求由谓词$invAuthReq$构成。在有效凭据的请求中，$UA\_SUCCESS$必须($MUST$)只能发送一次。因此可以定义两个属性，第一个属性中，即使$hasReqAuth$可能在认证成功后依然成立，但是由于只对认证之前的结论有用，因此利用$O$算子。
+\begin{PROPERTY}
+\[
+\begin{aligned}
+&G\ ( (hasReqAuth \wedge ! out = UA\_SUCCESS) ->\\
+&(invalidAuthReq -> out = UA\_FAILURE)\\
+&W\ (out = UA_SUCCESS \vee endCondition))\\
+\end{aligned}
+\]
+\end{PROPERTY}
+
+
+\begin{PROPERTY}
+\[
+\begin{aligned}
+G( out = UA\_SUCCESS ->　X G out!= UA\_SUCCESS)
+\end{aligned}
+\]
+\end{PROPERTY}
+\section{基于模型检测的协议实现安全性分析}
+本节对基于模型检测的协议实现安全性分析步骤进行详细描述。
+其工作流程包括三个主要的步骤，如图\ref{fig:CHIRONworkflow}所示。
+\begin{figure}[htb]
+  \centering%
+  \includegraphics[width = \textwidth]{data/content/chap05/bix.jpg}
+  \caption{基于模型检测的协议实现安全性分析步骤}
+  \label{fig:CHIRONworkflow}
+\end{figure}
+
+首先，通过第\ref{chap-statemachine}章的状态机学习算法提取到目标协议实现状态机模型。
+
+其次，基于模型检测的协议实现库状态机模型分析框架，将获得的模型$M$和协议的时态属性$(\varphi$)进行编码，并表示为线性时态逻辑公式(LTL)，作为模型检测器的输入。因此分析框架试图找到一个不满足$\varphi$的$M$的执行。如果检测到属性不满足的情况，那么模型检测器将生成一个反例($CEX$)作为例子，这个例子在本质上是一条不满足该属性的协议执行迹。
+
+为了使该学习框架可以使用任何模型检测器，状态机翻译器以$M$为输入并输出模型检测器可接受的建模语言(例如$\mathbf{SMV}$)。
+因为模型检测器所需迁移条件为布尔公式，所以翻译器映射了每个不同的命题变量(P)中的每个不同原子(比如x>0)，并且把这些映射关系存储在一个自适应的文件之中，该文件将在随后被用于自动翻译时态属性$\varphi$。%值得注意的是，$M$的翻译环境是使用了条件变量的QF-FOL公式，例如(x>0)\land(x+y=5)。
+
+最后，由于分析中所使用的抽象级别较高，由模型检测器生成的反例对于一个给定的实现可能无法满足真实执行的需要。为了剔除这种不现实的反例(比如错误的警告)，分析框架使用了双步反例验证技术。如果一个反例经过了两次验证，分析框架将该该反例视为一个可实现的反例并报告给用户，可实现的反例可以指出造成不满足属性$\varphi$的潜在的漏洞。
+
+可以使模型检测器与反例验证器交互的反例解析器。解析器可以用于解析由模型检测器生成的反例，并且可以使用原子映射文件来代替反例中对应的原子命题。例如，如果映射文件中包含$P$到${x > 0}$的映射，且$P\mapsto false$的，那么被解析出来的反例将是$(x > 0) \mapsto false$。反例的验证器用于检查这个被解析出来的反例。
+
+
+%{\hei C. 协议属性}
+%由于pLTL具有强大的相对时序表达能力，本文选用pLTL来描述一个协议的执行。
+%以SALT(对于时间逻辑的结构化断言)的形式描述结构。SALT与高级编程语言十分相近，包含用于频繁出现的内容的结构体。除了对用户比较友好以及允许用户使用规范形式来表示内容，SALT的内容还可以被其编译器自动的翻译成优化后的pLTL公式。本章测试的所有协议内容均以SALT书写并转化为pLTL。
+
+%通过对以下的内容进行SALT转化来模拟SALT的表示方法:``In a normal case, connection open event must be followed by zero or more receive data events and a connection close event unless a reset event occurs, which makes the requirement trivially satisfied''。这段内容可以用SALT来表示则是：assert / connection_open; receive\_data*; connection\_close/ accepton reset。其pLTL计数部分可以被表示为：(connection\_open \lor reset) \land ((O (receive\_data \lor reset) \mu (connection\_close \lor reset))) \lor reset)。
+
+%对于模型检测，当SALT编译器生成的pLTL包含一个对所有原子(例如connection\_open)的语义名称，需要这些内容以pLTL的格式呈现。使用由的FSM翻译器生成的自适应图和原子与他们语义名称之间的额外的映射图来自动的将由SALT编译器生成的pLTL翻译成模型检查器所需要的pLTL的格式。需要开发者提供这些图。
+
+\textbf{反例验证器}
+
+反例验证器使用双步反例认证技术，该技术可以剔除无法实现的反例。
+
+STEP 1(伪反例检查)。经过翻译的状态机中使用的命题相对于他们相应的原子可能具有彼此之间可能非常重要的依赖关系。但NuSMV模型检查器并不清楚任何的依赖关系。一个反例以$S_1$,...,$S_n$这种形式的序列表示，每个状态$S_i$映射了每个命题是真还是假。伪反例检查器(如~\ref{fig:CHIRONworkflow})使用SMT求解器检查每个反例状态$S_i$中的真值赋值是否与其原子语义(不是语义名称)一致。如果赋值一致，那么该反例被认为是一致的反例。如果赋值不一致，使用不变量来指导模型检测器。
+
+观察命题原子图：$P \mapsto {x > 0}, q \mapsto {x + y = 5}, r \mapsto {y < 5}。使 p \land q \land r$ 是一个转化条件， $S_i$是一个反例状态，该反例状态的值被分配为false,true和true，分别代表命题p，q，r。很明显如果$(y < 5) 和 (x + y = 5)$都为真，则 x > 0 不能为假。因此真值分配$ \neg(x > 0)\land(x+y=5)\land(y<5)使反例不满足。接下来的不变量将被自动生成用以指导模型检查器：q \land r \to p (例如当q和r都被设置为true时，p必须被设为true)。$
+
+STEP 2（重放反例）。 由于符号执行的不完整性(比如循环展开)和有限的用户输入粒度,生成的反例可能在一个具体的执行中无法被重放。与其实现符合的属性之一是当服务器与客户端进行连接会话时，服务器必须拒绝任何进一步的链接请求。由于实现的状态机中存在语义错误，服务器在当前正在进行的会话中错误的接受新连接，因此，实现违反了该属性。
+
+为了排除这种不可实现的反例，具体的重放每个一致的反例并监视协议实现的执行。重放执行通过从SMT求解器获得的具体值，由反例指导。在执行期间监事执行的操作和状态的变化，并检查他是否与反例匹配。如果协议执行与反例一致，将其报告为可实现的反例，可以再现潜在的语义错误。
+
+
+\section{实验与结果分析}
+本节利用提出的协议实现分析框架对第\ref{chap-statemachine}章中GnuTLS 3.3.6，OpenSSL 1.0.1g以及NSS 3.16.3进行安全属性验证。
+\subsection{实验设计}
+\textbf{实验名称}：基于模型检测的协议实现安全性分析实验。
+
+\textbf{实验目的}：对TLS协议实现库GnuTLS、OpenSSL以及NSS的安全属性验证。
+
+\textbf{协议版本}：GnuTLS 3.3.6，OpenSSL 1.0.1g，NSS 3.16.3。
+
+\textbf{实验环境}：
+Intel Core™ i7-4710MQ CPU，主频2.5GHz，8GB内存，搭载Ubuntu 14.04 64位操作系统。
+
+\textbf{实验步骤}
+本节对TLS协议实现库进行安全性分析需要以下三个步骤：
+\begin{enumerate}
+
+\item 协议状态机模型提取
+
+\item 协议安全属性建模
+
+\item 安全属性模型检测
+\end{enumerate}
+由于状态机模型提取步骤已通过第\ref{chap-statemachine}章实现，本节主要论述协议安全属性建模。
+
+\textbf{TLS协议安全属性建模}
+
+首先对TLS协议安全属性进行建模。
+
+
+TLS的完整交互流程应当包含以下几个步骤：
+
+(1)密钥交换；
+
+(2)认证服务的请求；
+
+(3)为认证过程提供有效的机密消息；
+
+(4)建立信道。
+
+当成功完成第一步时，可以通过简单谓词$hasReqAuth$,$validAuthReq$和$OpenedChannel$表示后面各步骤。这些谓词是根据特定时间输出生成来定义的，具有此输出的某些值表示该步骤已成功执行，例如$CH\_OOPEN\_SUCCESS$表示信道已成功建立。有时还需要能够生成所需输出的输入值，以便将此步骤与其他步骤区分开来。例如的，在请求认证服务与请求连接服务是通过$SR\_AUTH$来区别的。对于这些简单谓词，可以添加有效，无效以及所有的认证方法。最后谓词最后必须与输入字母表以及输出生成表一致。最后$connLost$表示连接断开，$endCondition$是指更高层属性不再成立时的条件。
+
+$hasReqAuth : = inp = SR\_AUTH \cap out =S\_ACCEPT ;$
+
+$validAuthReq : = out =UA\_PK\_OK \cup out =UA\_PW\_OK ;$
+
+$hasOpenedChannel : = out =CH\_OPEN\_SUCCESS ;$
+
+$validAuthReq : = inp =UA\_PK\_OK \cup inp =UA\_PW\_OK ;$
+
+$invAuthReq : = inp =UA\_PK\_NOK\cup inp =UA\_PW\_NOK| inp =UA\_NONE ;$
+
+$authReq : = validAuthReq \cup invalidAuthReq ;$
+
+$receivedNewKeys : = out =NEWKEYS \cup out =_NEWKEYS ;$
+
+$kexStarted : = out =KeyExchange ;$
+
+$connLost : = out =NO.CONN \cup out = DISCONNECT ;$
+
+$endCondition : = kexStarted \cup connLost ;$
+
+
+
+
+%\textbf{模型检测器}
+%本文采用NuSMV作为模型检测器，通过其LTL处理模块，对已通过LTL建模的安全属性进行分析。
+
+
+\subsection{结果分析}
+%Early CCS (CCS injection) 16年未被发现，所有版本低于OpenSSL 1.0.1g 都受此漏洞影响。
+表\ref{table-chap04-modelcheckingresult}表示了模型检测的结果。
+\begin{table}[htb]
+  \centering
+  \caption{测试的TLS实现}
+\begin{tabular}{|c|c|c|c|c|c|}
+  \hline
+  % after \\: \hline or \cline{col1-col2} \cline{col3-col4} ...
+           & 属性 & 关键字 & GnuTLS & OpenSSL  &NSS	\\
+  \hline
+  Security & Trans &      &$\surd$ &$\surd$ &$\surd$	\\
+  \cline{2-6}
+           &Auth   &      &$\surd$ &$\surd$ &$\times$	\\
+  \hline
+  Rekey & Pre-auth &      &$\surd$ &$\times$ &$\surd$	\\
+  \cline{2-6}
+        & Auth     &      &$\surd$&$\surd$&$\surd$  \\
+  \hline
+Funct &Prop.4      & MUST &$\surd$&$\surd$&$\surd$	\\
+  \cline{2-6}
+   &Prop.5      & MUST &$\surd$&$\surd$&$\surd$	\\
+  \cline{2-6}
+   &Prop.6      & MUST &$\surd$&$\times$&$\surd$	\\
+  \cline{2-6}
+   &Prop.7      & MUST &$\surd$&$\surd$&$\surd$	\\
+  \cline{2-6}
+   &Prop.8      & MUST &$\surd$&$\surd$&$\surd$	\\
+  \hline
+
+\end{tabular}
+\label{table-chap04-modelcheckingresult}
+\end{table}
+可以看到OpenSSL不满足属性6，
+通过反例验证器分析，确认这是一个的EarlyCCS注入漏洞(CVE-2014-0224)。
+
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=16cm]{data/content/chap05/opensslserverattack.jpg}
+	\caption{OpenSSL1.0.1g攻击路径图}
+	\label{fig-opensslserverattack}
+\end{figure}
+
+如图\ref{fig-opensslserverattack}虚线所示的状态迁移中，当OpenSSL服务器收到更改密码规范消息时，就会开始计算会话密钥，然后此时还没有发送客户端密钥交换消息，因此实际上服务器端用的是一个空的主密钥，这意味着在通信过程中，实际使用的密钥是通过传递的消息计算所得的。攻击者就能轻易得计算出接下来的会话所用的密钥。
+这意味着攻击者能够通过在握手初期通过向客户端和服务器发送更改密码规范消息来劫持一段会话。
+该攻击描述为：在TLS协议握手过程中，攻击者伪装为服务器的时候，在ServerHelloDone完成后即向客户端发送ChangeCipherSpec消息，然而此时还没有生成主密钥，因此使用一个空值代替，由于OpenSSL在收到CCS的时候并没有检查自己的握手状态机处于哪一步骤，因此会无条件接收，此时它也没有主密钥，协议后续的操作就是使用不是密钥的密钥对数据进行加密，注意，由于OpenSSL的实现原因，只要经过了key的计算，在一个会话中以后就不会再次计算。
+
+
+在NSS中，安全属性$trans$不满足，根据反例，找到其错误的状态转移。如图\ref{fig-nssclientattack}中虚线所示状态转移中，NSS客户端在收到ChangeCipherSpec与ServerFinish之间可以接收应用数据。这与协议规范中，应用数据必须通过服务器认证后的密钥加密才可接受的属性矛盾。攻击者可通过重协商消息，将客户端状态迁移至ChangeCipherSpec。
+
+\begin{figure}[htp]
+	\centering
+	\includegraphics[width=15cm]{data/content/chap05/nssclientattack.jpg}
+	\caption{NSS3.16.3攻击路径图}
+	\label{fig-nssclientattack}
+\end{figure}
+
+
+NuSMV模型由一组有限变量与迁移函数一起定义。在规范中的线性时态逻辑，可以在特定的模型上进行检测，并在给定规范不正确时，生成反例。
+通过学习到的状态机模型作为NuSMV的输入模型。该模型共有3个变量，它们分别对应为输入，输出和状态。
+这里实际上并不是对协议实现代码进行直接的模型检测，而是对受测系统的抽象模型的属性进行检测。因此对模型检测的结果进行解释时应当小心；其次即使某些属性对于抽象模型不成立时，也需要对模型检测器生成的反例在实际代码上进行运行来验证此反例是否在代码上存在实际运行。如果反例不正确，那么就证明了该反例不是协议实现的真实漏洞。
+
+通过上述分析可以看出，通过建模的12种安全属性，上述三种TLS实现库中，只有GnuTLS 3.3.6基本符合协议规范声明的安全属性；OpenSSL 1.0.1g认证属性不满足，存在一个注入漏洞，其余属性满足协议规范；NSS不满足重协商安全性，其余属性满足协议规范。这证明
+通过模型检测方法验证状态机学习得到的状态机模型，完成对协议实现库的安全性分析的目的，实验结果证明，该方法能够有效发现协议实现中状态机模型中存在的逻辑缺陷。
+
+
+
+\section{本章小结}
+%本章结合第\ref{chap-statemachine}章的状态机学习算法，提出了基于模型检测的协议实现分析技术，建立了基于模型检测的协议实现状态机模型分析框架。该框架以协议实现的状态机为输入，将协议规范及实现库声明的安全属性建模为线性时态逻辑，通过模型检测器NuSMV对安全属性进行验证，将验证结果分为属性满足和不满足。对验证过程中产生反例通过伪反例检查和反例重放两步组成的反例检查器进行筛选，确保该反例为真实执行。
+
+
+
+本章针对模型检测技术不能直接应用于协议实现库的分析的问题，对协议实现库采用状态机学习技术，提取了协议实现库的状态机模型，同时对照协议规范文档（RFC）中的安全条件，建立协议安全属性模型，并通过模型检测方法，利用形式化模型检测工具NuSMV，完成了对TLS实现库的形式化分析，用于寻找TLS协议实现库的逻辑漏洞。本章基于协议实现声明，建立了安全属性、密钥交换属性以及函数属性3类共12项安全属性，通过对3种TLS实现库的验证结果显示，GnuTLS 3.3.6基本符合协议规范声明的安全属性；OpenSSL 1.0.1g认证属性不满足，存在一个注入漏洞，其余属性符合协议规范；NSS不满足重协商安全性，其余属性满足协议规范。对于不满足的安全属性定义的协议实现，通过反例检测器，剔除伪反例，可以找到其对应于协议实现库的协议真实执行。提取TLS标准中的安全声明，使用模型检测自动化分析协议实现的状态机模型。通过分析推断状态机揭示系统的内部结构，所得的模型检测结果可以发现协议规范与协议实现之间的差异，以便在未来版本中对其进行改进。实验证明本方法能够有效分析TLS协议实现库的状态机模型，找到协议实现库存在的逻辑漏洞及与规范不一致的缺陷，包括导致服务器异常的错误交互以及某些违反规范的行为在内的协议实现库逻辑漏洞。这证明通过模型检测方法验证状态机模型，可以寻找协议实现库的逻辑缺陷，达到了对协议实现库的安全性分析的目的。
+%\subsection{OpenSSL}
+
+
+%获得的模型包含比预期更多的状态，但仅包含一条成功交换应用程序数据的路径。该模型显示协议可以通过发送两个ClientHello消息开始，但是该消息数量不能超过两个。 在第二个ClientHello消息之后，模型中则没有成功交换应用程序数据的路径。 这是因为每次发送ClientHello时OpenSSL都会重置包含握手消息的缓冲区，因此不会接受在握手结束时计算的哈希值，并且会通过警报响应状态9中的Finished消息。
+
+
+
+%\begin{figure}[htp]
+%	\centering
+%	\includegraphics[width=13cm]{data/content/chap04/figure2}
+%	\caption{OpenSSL1.0.1g攻击路径图}
+%	\label{fig-modelchecker}
+%\end{figure}
+
+
+%特别是，协议状态机学习涉及一种被动测试：在状态机学习期间执行的测试包括错误测试，即消息以意外命令发送的测试，人们期望这会导致连接中断，而如果连接并没有按照规范设定的中断的话，则需要深入调查其原因。图\ref{fig-modelchecker}是OpenSSL 1.0.1g服务器端学习到的状态机模型。对此状态机进行分析，可以看到一条可疑路径（状态0，1，6，9，12）。

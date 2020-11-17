@@ -1,0 +1,14 @@
+# Fdb version 3
+["xdvipdfmx"] 0 "abstract.xdv" "abstract.pdf" "abstract" 0
+  "abstract.xdv" 0 -1 0 "xelatex"
+  (generated)
+  "abstract.pdf"
+["xelatex"] 1604556395 "abstract.tex" "abstract.xdv" "abstract" 1604556396
+  "abstract.aux" 1604548054 9 a94a2480d3289e625eea47cd1b285758 ""
+  "abstract.tex" 1604556392 18581 0c6ee2ab3ef8caf217549c138139882d ""
+  "c:/texlive/2019/texmf-dist/web2c/texmf.cnf" 1581927396 35430 ca24fb44b873d21ac4c63d01600decd4 ""
+  "c:/texlive/2019/texmf-var/web2c/xetex/xelatex.fmt" 1581928550 3750166 abafae0ac798281ec0f6e1ecaa0166fb ""
+  "c:/texlive/2019/texmf.cnf" 1581928388 673 4ae7b2f49cee444c5343a45b5d0f169c ""
+  (generated)
+  "abstract.log"
+  "abstract.xdv"

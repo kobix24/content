@@ -1,0 +1,68 @@
+\chapter{CHIRON的设计}
+\label{chap:CHIRON}
+
+在这一节，首先对基于模型检测的协议实现库状态机模型分析框架设计进行一个概览，然后对其主要模块的细节进行详细描述。
+
+{\hei A. 概览}
+基于模型检测的协议实现库状态机模型分析框架的工作流程包括三个主要的步骤，如~\ref{fig:CHIRONworkflow}所示。通过上一章\ref{chap-statemachine}的状态机学习算法提取到目标协议实现状态机。
+
+其次，基于模型检测的协议实现库状态机模型分析框架，将获得的模型$\mathbf{M}$和协议的时态属性(\varphi)进行编码，并表示为命题线性时态逻辑公式(pLTL)，作为模型检测器的输入。因此分析框架试图找到一个不满足\varphi的$M$的执行。如果检测到属性不满足的情况，那么模型检测器将生成一个反例($\mathbf{CEX}$)作为例子，这个例子在本质上是一条不满足该属性的对协议执行。
+
+为了使该学习框架可以使用任何模型检测器，状态机翻译器以$M$为输入并输出模型检测器可接受的建模语言(例如$\mathbf{SMV}$)。
+因为模型检测器所需迁移条件为布尔公式，所以翻译器映射了每个不同的命题变量(P)中的每个不同原子(比如x>0)，并且把这些映射关系存储在一个自适应的文件之中，该文件将在随后被用于自动翻译时态属性\varphi。%值得注意的是，$M$的翻译环境是使用了条件变量的QF-FOL公式，例如(x>0)\land(x+y=5)。
+
+由于分析中所使用的抽象级别较高，由模型检测器生成的反例对于一个给定的实现可能无法满足真实执行的需要。为了剔除这种不现实的反例(比如错误的警告)，分析框架使用了双步反例验证技术。如果一个反例经过了两次验证，分析框架将该该反例视为一个可实现的反例并报告给用户，可实现的反例可以指出造成不满足属性\varphi的潜在的漏洞。
+
+可以使模型检测器与反例验证器交互的反例解析器。解析器可以用于解析由模型检测器生成的反例，并且可以使用原子映射文件来代替反例中对应的原子命题。例如，如果映射文件中包含$P$到${x > 0}$的映射，且$P\mapsto false$的，那么被解析出来的反例将是$(x > 0) \mapsto false$。反例的验证器用于检查这个被解析出来的反例。
+
+\begin{figure}[htb]
+  \centering%
+  \includegraphics[width = .8\textwidth]{CHIRONworkflow.pdf}
+  \caption{论文中所使用方法的框架}
+  \label{fig:CHIRONworkflow}
+\end{figure}
+
+%{\hei C. 协议属性}
+%由于pLTL具有强大的相对时序表达能力，本文选用pLTL来描述一个协议的执行。
+%以SALT(对于时间逻辑的结构化断言)的形式描述结构。SALT与高级编程语言十分相近，包含用于频繁出现的内容的结构体。除了对用户比较友好以及允许用户使用规范形式来表示内容，SALT的内容还可以被其编译器自动的翻译成优化后的pLTL公式。本章测试的所有协议内容均以SALT书写并转化为pLTL。
+
+%我们通过对以下的内容进行SALT转化来模拟SALT的表示方法:``In a normal case, connection open event must be followed by zero or more receive data events and a connection close event unless a reset event occurs, which makes the requirement trivially satisfied''。这段内容可以用SALT来表示则是：assert / connection_open; receive\_data*; connection\_close/ accepton reset。其pLTL计数部分可以被表示为：(connection\_open \lor reset) \land ((O (receive\_data \lor reset) \mu (connection\_close \lor reset))) \lor reset)。
+
+%对于模型检测，当SALT编译器生成的pLTL包含一个对所有原子(例如connection\_open)的语义名称，我们需要这些内容以pLTL的格式呈现。我们使用由我们的FSM翻译器生成的自适应图和原子与他们语义名称之间的额外的映射图来自动的将由SALT编译器生成的pLTL翻译成模型检查器所需要的pLTL的格式。我们需要开发者提供这些图。
+
+{\hei 验证反例}
+
+由模型检测器生成的反例由于以下原因使用双步反例认证技术，该技术可以分别剔除由其两条原因所导致的无法实现的反例。
+
+STEP 1(伪反例检查)。经过翻译的E-FSM中使用的命题相对于他们相应的原子可能具有彼此之间可能非常重要的依赖关系。但pLTL模型检查器并不清楚任何的依赖关系。一个反例以$S_1$,...,$S_n$这种形式的序列表示，每个状态$S_i$映射了每个命题是真还是假。伪反例检查器(如~\ref{fig:CHIRONworkflow})使用SMT求解器检查每个反例状态$S_i$中的真值分配是否与其原子语义(不是语义名称)一致。如果分配一致，那么该反例被认为是一个一致的反例。如果分配不一致，使用不变量来指导模型检测器，指示它将来不要探索$S_i$。
+
+观察一下命题原子图：P \mapsto {x > 0}, q \mapsto {x + y = 5}, r \mapsto {y < 5}。使 p \land q \land r 是一个转化条件， $S_i$是一个反例状态，该反例状态的值被分配为false,true和true，分别代表命题p，q，r。很明显如果(y < 5) 和 (x + y = 5)都为真，则 x > 0 不能为假。因此真值分配 \neg(x > 0)\land(x+y=5)\land(y<5)使反例不满足。接下来的不变量将被自动生成用以指导模型检查器：q \land r \to p (例如当q和r都被设置为true时，p必须被设为true)。
+
+STEP 2（重放反例）。 由于符号执行的不完整性(比如循环展开)和对于我们的分析有限的用户输入粒度,生成的反例可能在一个具体的执行中无法被重放。以Contiki-2.4中的Telnet服务器(Telnetd)实现为例，与其实现符合的属性之一是：“当服务器与客户端进行连接会话时，服务器必须拒绝任何进一步的链接请求。”由于实现的FSM中存在语义错误，服务器在当前正在进行的会话中错误的接受新连接，因此，实现违反了该属性。我们随后将在细节上对这种为例行为进行讨论。
+
+现在考虑修补后的Telnet实现的代码片段，他通过添加链接的保护变量来修复该错误，一边服务器仅在尚未链接的情况下接受新连接。现在，假设开发人员错误的假定协议FSM状态仅有一个变量(如，s.state)组成并且排除链接。由于connected既不是状态变量也不是标记为条件变量，因此提取的E-FSM缺少有关链接的信息，并且有允许M一次接受多个链接的转换。因此，一次只允许一个链接的属性似乎被违反，因为模型检查器将能够生成在步骤1中不被排除的一致反例。然而，这种反例协议在任何实际执行中都是不可实现的，因为链接保证了堆内容的违例。
+
+为了排除这种不可实现的反例，我们具体的重放每个一致的反例并监视协议实现的执行。重放执行通过从SMT求解器获得的具体值，由反例指导。我们在执行期间监事执行的操作和状态的变化，并检查他是否与反例匹配。如果协议执行与反例一致，我们将其报告为可实现的反例，他可以再现潜在的语义错误。
+
+
+我们为TLS客户端选择的属性(OP1-OP6)(参见~\ref{table:TLS})基于RFC规定的完全握手期间的协议消息的正确时间顺序。完全握手涉及客户端和服务器之间交换的四个消息。客户端首先发送ClientHello。服务器响应一系列以ServerHello开头并以ServerHelloDone结尾的消息。在这些消息之间，服务器可以根据正在协商的参数发送一些可选消息（ServerCertificate，ServerKeyExchange和CertificateRequest）。接下来，客户端发送一系列以ClientFinished结尾的消息，服务器回复ServerFinished以完成握手。但是，客户端和服务器都必须在各自的Finished消息之前发送更改密码规范（CCS）消息。不遵守这些属性可能会产生严重的安全隐患，例如破坏的TLS保证和冒充攻击。
+
+\begin{table}[htbp]
+\centering
+\begin{minipage}[t]{0.4\linewidth}
+\caption{缓解过程中的异常节点}
+\label{table:TLS}
+\begin{tabularx}{\linewidth}{ccc}
+\toprule[1.5pt]
+{\hei 节点序号} & {\hei 节点地址} & {\hei 节点类型} \\
+\midrule[1pt]
+1 & 0x804ce57 & 读异常 \\
+2 & 0x804ca79 & 读异常 \\
+3 & 0x804ca85 & 读异常 \\ 
+4 & 0x804d08d & 读异常 \\
+5 & 0x804f710 & 写异常 \\
+\bottomrule[1.5pt]
+\end{tabularx}
+\end{minipage}
+\end{table}
+

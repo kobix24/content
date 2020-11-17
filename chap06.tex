@@ -1,0 +1,356 @@
+%!TEX root = C:\Users\kobix\Documents\gradu\thesis1\thesiscc.tex
+\chapter{基于拓展敌手模型的递归协议安全性判定算法研究}
+递归协议的递归原语是包含递归算子的密码学原语。例如，群协议中，服务器通常需要处理包含不同节点贡献的请求，这些请求随后用来生成群共享密钥。其中典型的协议有Asokan-Ginzboorg 群协议\cite{asokan2000key}。安全路由协议也需要它的节点检查其收到路由报文的有效性，一般通过检查路由的某一方的签名来验证。X.509协议证书认证过程中也会用到递归操作。
+递归操作包含许多复杂的计算，因此很难验证具有递归原语的协议安全性，也几乎没有对其安全性的普遍意义上的判定过程结果。递归操作可能会产生复杂的计算。目前已知的结果只有当递归算子通过树变换器建模，并且禁止等价测试和密钥构造的情况下才有确定性结果。为了避开这种限制，另一个判定过程设置了对映射表添加标签的要求。由于递归的计算特性，协议的输入输出会泄漏复杂的消息，传统敌手模型无法对其进行系统描述，影响对递归协议的形式化分析。
+
+
+本章提出了基于拓展敌手模型的递归协议安全性判定算法，该算法能够对执行正常输入输出以及递归测试的协议进行验证，尤其是安全路由协议以及公钥证书路径的验证。
+对于包含递归测试的协议，通过约束系统建模，并加入成员查询的递归语言。同时获得了敌手知识的完备表示。在拓展敌手模型的情况下，该结论对广义约束系统也适用。给出了基于映射的递归语言的判定过程，并证明了该判断过程是一个NP问题。
+
+%\section{问题描述}
+
+
+\section{递归协议建模}
+作为一族利用递归或迭代操作的协议，递归协议通常必须处理包含组中每个不同节点的贡献的请求，这些贡献用于计算公共共享密钥。 安全路由协议还要求节点\cite{buttyán2004towards}\cite{feng2009uc}检查其接收的路由的有效性。 通常，这是通过检查每个节点是否已正确签名路由的某些部分来执行的，整个传入消息形成一条链，其中每个组件都是路径中某个节点的贡献。 需要通过对链上的消息、敌手能力进行建模。
+
+
+
+\textbf{消息}
+
+协议消息通过项代数表示。
+% 预览段落 0 的源代码
+$\mathcal{F}={senc,aenc,\left\llbracket \_\right\rrbracket \_,\left\langle \_,\_\right\rangle ,h,::,[],pub,priv,vk,sk}$。
+$\left\langle \right\rangle $表示结合函数，$::$表示链构造元，$[]$表示空链。项$pub(A)$和$priv(A)$表示节点$A$的公钥和私钥，$sk(A)，vk(A)$分别表示节点$A$的签名密钥和验证密钥。函数符号$senc,resp,aenc)$分别表示对称加密，响应和非对称加密，
+名称集合$\mathcal{N}={Rep,Req,N,K,A,S,D,Id\ldots}$，这些名称用来表示常量，变量，对称密钥和节点名称。
+记$st(u)$为项$u$的子项。置换$\sigma={x_1 \mapsto t_1,\ldots, x_n\mapsto t_n}$的域为$dom(\sigma)={x_1,\ldots,x_n}$。$u_1,u_2$的最大归一算子记做$mgu(u_1,u_2)$。
+
+\textbf{敌手能力}
+
+本节通过推导系统描述敌手能力，采用第\ref{adversary}章中的拓展敌手模型。
+
+
+% 预览段落 0 的源代码
+
+\begin{table}[htb]
+  \centering
+  \caption{敌手推导规则}
+\[\begin{matrix}
+
+   u\in M\Rightarrow M\vdash u & M\vdash {{u}_{1}}\wedge M\vdash {{u}_{2}}\Leftrightarrow M\vdash ({{u}_{1}},{{u}_{2}})  \\
+   M\vdash \{|{{u}_{1}}|\}_{{{u}_{2}}}^{s}\vdash M\vdash {{u}_{2}}\Rightarrow M\vdash {{u}_{1}} & M\vdash {{u}_{1}}\wedge M\vdash {{u}_{2}}\Rightarrow M\vdash \{|{{u}_{1}}|\}_{{{u}_{2}}}^{s}  \\
+   M\vdash \{|{{u}_{1}}|\}_{{{u}_{2}}}^{a}\wedge M\vdash {{({{u}_{2}})}^{-1}}\Rightarrow M\vdash {{u}_{1}} & M\vdash {{u}_{1}}\wedge M\vdash {{u}_{2}}\Rightarrow M\vdash \{|{{u}_{1}}|\}_{{{u}_{2}}}^{a}  \\
+
+
+\end{matrix}\] 
+
+\label{table:chap02-inference}
+\end{table}
+\begin{tabular}{c}
+$\displaystyle\frac{a\notin \left\{ {{\sigma }_{Test}}\left( R \right)|R\in dom\left( P \right) \right\}}{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},LKR\left( a \right) \right) \right\rangle ,IK\cup LongTermKeys\left( a \right),th,{{\sigma }_{Test}} \right)}\left[ LK{{R}_{others}} \right]$  \\
+
+$\displaystyle\frac{a={{\sigma }_{Test}}\left( {{R}_{Test}} \right)\ \ \ \ \ \ \ a\notin \left\{ {{\sigma }_{Test}}\left( R \right)|R\in dom\left( P \right)\backslash \left\{ {{R}_{Test}} \right\} \right\}}{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},LKR\left( a \right) \right) \right\rangle ,IK\cup LongTermKeys\left( a \right),th,{{\sigma }_{Test}} \right)}\left[ LK{{R}_{actor}} \right]$\\
+
+$\displaystyle\frac{a\in Agent\ \ \ \ \ \ \ th\left( Test \right)=\left\langle {} \right\rangle }{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},LKR\left( a \right) \right) \right\rangle ,IK\cup LongTermKeys\left( a \right),th,{{\sigma }_{Test}} \right)}\left[ LK{{R}_{after}} \right]$\\
+
+$\displaystyle\frac{tid\ne Test\ \ \ \ \ \ \ tid\notin Partner\left( tr,{{\sigma }_{Test}} \right)}{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},SKR\left( tid \right) \right) \right\rangle ,IK\cup union\left( tr\downarrow tid \right)\downarrow sessionkeys,th,{{\sigma }_{Test}} \right)}\left[ SKR \right]$\\
+
+$\displaystyle\frac{tid\ne Test\ \ \ \ \ \ \ tid\notin Partner\left( tr,{{\sigma }_{Test}} \right)\ \ \ \ \ th\left( tid \right)\ne \left\langle {} \right\rangle }{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},SR\left( tid \right) \right) \right\rangle ,IK\cup union\left( tr\downarrow tid \right)\downarrow state,th,{{\sigma }_{Test}} \right)}\left[ SR \right]$\\
+
+$\displaystyle\frac{{}}{\left( tr,IK,th,{{\sigma }_{Test}} \right)\to \left( tr\hat{\ }\left\langle \left( ti{{d}_{\mathcal{A}}},RNR\left( tid \right) \right) \right\rangle ,IK\cup union\left( tr\downarrow tid \right)\downarrow generate,th,{{\sigma }_{Test}} \right)}\left[ RNR \right]$\\
+
+
+
+\end{tabular}
+
+第二个推导规则是合成规则，其余规则是分解规则，这些规则描述了敌手可以通过配对，建立链加密以及获取密钥后对消息签名等方式合成消息。同时，也能在有解密密钥的情况下分解消息。对于签名来说，敌手可以验证一个签名$\left\llbracket m\right\rrbracket _{sk(a)}$
+是否与消息$m$匹配，但这无法生成新消息，因此推导系统不需要建立签名规则。项集$T$可推导项$u$，记做$T \vdash u$，如果存在一个证明，那么中间的每一项都是推导规则的实例。在此基础上又加入了第三章的拓展的敌手模型，目的是在约束系统下对敌手能力进行提高。
+
+
+\textbf{约束系统}
+
+约束系统在安全协议建模中十分常见，一个约束系统通过抽象符号的方式表示协议的执行迹，通常用来描述在某种情境下安全协议的是否能够保持机密性。为了增强敌手能力，假设敌手知道所有的不受限链中的名称集$\mathcal{I}$。
+
+\begin{definition}{(约束系统)}
+
+一个约束系统就是二元对$(\mathcal{C},\mathcal{I})$，这样$\mathcal{I}$是一个非空名称集，$\mathcal{C}$是$\bot$或一系列推导约束，表示为有限合取${\bigwedge T_{i}\Vdash u_{i}}$，这里$T_i$是一个有限项集，称为约束前件，$u_i$是一个项，称为约束后件，满足以下条件：
+
+\begin{itemize}
+\item $T_{i}\subseteq T_{i+1}\text{,}1\leq i\leq n$
+\item 如果$x \in vars(T_i)$则存在$j<i$使得$x\in vars(u_j)$
+\end{itemize}
+
+
+
+\end{definition}
+
+其中第二个条件表示，新的变量带入时，是作为约束后件的。约束前件通常表示网络中发送的消息，而约束后件通常表示参与方想获得的消息。
+
+
+
+%\begin{definition}{(非混淆解)}
+
+%给定约束系统$(\mathcal{C},\mathcal{I})$，其中$\mathcal{C}{\bigwedge T_{i}\Vdash u_{i}}$。$(\mathcal{C},\mathcal{I})$的解是一个域为$vars(\mathcal{C})$的基置换，它是的对每个$i\in{1,\ldots,n}$，都有$T_{i}\theta\cup\text{\ensuremath{\mathcal{I}\vdash u_{i}\theta}}$。空的约束系统总是可满足的然而$(\perp,\mathcal{I})$表示不满足约束系统。称$\theta$是$(\mathcal{C},\mathcal{I})$的非混淆解，当$t_1=t_2$对任意$t_1,t_2 \in st(T_n)$使得$t_1\theta=t_2\theta$
+
+%\end{definition}
+
+%非混淆解不会将两个不同的前件子项映射到相同的项中。
+
+执行样式匹配的协议可以建模为约束系统。推导约束不能保证某个消息是证书的有效链，需要对其进行扩展，可以结合语言约束$u\uplus\mathcal{L}$，其中$\mathcal{L}$可以是任意语言，也就是任意项集，特别将其定义为递归语言。
+
+
+\begin{definition}{(语言约束)}
+$\mathcal{L}$是语言，则与约束系统$(\mathcal{C},\mathcal{I})$关联的$\mathcal{L}$语言约束可以表述为$u_{1}\uplus\mathcal{\mathcal{L}\wedge}...\wedge u_{k}\uplus\mathcal{L}$，一个约束系统$(\mathcal{C},\mathcal{I})$和一个$\mathcal{L}$语言约束$\phi=u_{1}\uplus\mathcal{\mathcal{L}\wedge}...\wedge u_{k}\uplus\mathcal{L}$的解是一个基置换$\theta$，此时$\theta$是$(\mathcal{C},\mathcal{I})$的解，并且$u_i\theta \in \mathcal{L}$。
+
+\end{definition}
+
+
+\section{约束求解}
+    考虑敌手长期密钥攻击规则模型下，对攻击者所具备知识提供了一个完全符号表达模型。重新考虑Cortier中提出的约束求解过程\cite{Cortier2012}，发现求解一个可代表$(\mathcal{C}_{1},\mathcal{I}),...,(\mathcal{C}_{n},\mathcal{I})$所有解的有限集合$(\mathcal{C},\mathcal{I})$。Cortier提出的证明方法可将结果规约至项代数\cite{Cortier2012}。更重要的是，通过仅仅考虑利用组合策略产生的$(\mathcal{C}_{i},\mathcal{I})$的解是足够的。
+
+\subsection{简化规则}
+    本节规约过程基于一系列简化规则，该简化规则可将一个普通约束系统简化为一些更精简且更易判定满足性的系统。一个约束系统$(\mathcal{C},\mathcal{I})$可解定义为$\mathcal{C}\neq\bot$，并且它中的每个约束可表达为$T\Vdash x$，其中x时可变量。一个空的约束系统是可解的。可解的约束系统一般比较简单因为它们通常包含一个可行解。对于$N_{0}\in\mathcal{I}$，$x\tau=N_{0}$中定义的置换$\tau$对于每个变量x均为一个解，这是因为对于可解约束系统中任意约束$T\Vdash x$都有$T\tau\cup\mathcal{I}\vdash x\tau$。
+
+    本节处理的简化规则如下：
+ 
+
+ \begin{table}
+ \caption{简化规则}
+$\mathsf{R_{ax}}:(\mathcal{C}\land T\Vdash u,\mathcal{I})\rightsquigarrow(\mathcal{C},\mathcal{I})$
+if $T\cup\{x\mid T^{'}\Vdash x\in\mathcal{C},T^{'}\subsetneq T\}\vdash u$
+
+$\mathsf{R_{unif}}:(\mathcal{C}\land T\Vdash u,\mathcal{I})\rightsquigarrow_{\sigma}(\mathcal{C\sigma}\land T\sigma\Vdash u\sigma,\mathcal{I})$
+if$\sigma=mgu(t_{1},t_{2})$ where $t_{1}\in st(T),t_{2}\in st(T\cup\{u\}),$
+and $t_{1}\neq t_{2}$
+
+$\mathsf{R_{fail}}:(\mathcal{C}\land T\Vdash u,\mathcal{I})\rightsquigarrow(\bot,\mathcal{I})$
+if $vars(T\cup\{u\}\eqcirc\emptyset)$ and $T\nvdash u$
+
+$\mathsf{R_{f}}:(\mathcal{C}\land T\Vdash\mathsf{f}(u,v),\mathcal{I})\rightsquigarrow(\mathcal{C}\land T\Vdash u\land T\Vdash v,\mathcal{I})$
+for $\mathsf{f}\in\mathcal{F\diagdown\mathcal{F}}_{s}$ 
+ \end{table}
+
+    所有的规则均通过一个置换索引（针对没有索引的，则通过一个隐式的等价置换表达）。定义$(\mathcal{C},\mathcal{I})\rightsquigarrow_{\sigma}^{*}(\mathcal{C}^{'},\mathcal{I})$当存在$\mathcal{C}_{1},...,\mathcal{C}_{n}$使得$(\mathcal{C},\mathcal{I})\rightsquigarrow_{\sigma_{0}}(\mathcal{C}_{1},\mathcal{I})\rightsquigarrow_{\sigma_{1}}\ldots\rightsquigarrow_{\sigma_{n}}(\mathcal{C}^{'},\mathcal{I})$和$\sigma\eqcirc\sigma_{n}\circ\ldots\circ\sigma_{1}\circ\sigma_{0}$。除了$\mathsf{R_{unif}}$，的规则与[11]中的类似，通过一个子项$u$与变量对归一化算子认证。
+
+定义策略$S$，其中包含尽早使用$R_fail、R_unif$和$R_f$，以确保在多项式时间内停机。最后，将$R_ax$应用在剩余的约束中。发现这些规则可以构成一个完全判决过程。
+
+\begin{definition} 设$(\mathcal{C},\mathcal{I})$为一个约束系统，则有：
+\begin{itemize}
+\item 可靠性：如果$(\mathcal{C},\mathcal{I})\rightsquigarrow_{\sigma}^{*}(\mathcal{C}^{'},\mathcal{I})$，对于约束系统$(\mathcal{C}^{'},\mathcal{I})$和一些替换σ，如果θ是$(\mathcal{C}^{'},\mathcal{I})$的一个解，则$\theta\circ\sigma$也是$(\mathcal{C},\mathcal{I})$的一个解。
+\item 完备性：如果 θ是$(\mathcal{C},\mathcal{I})$的一个解，则存在一个可解的约束系统$(\mathcal{C}^{'},\mathcal{I})$和替换$\sigma$，使得在策略S下$\theta\eqcirc\theta^{'}\circ\sigma$和$(\mathcal{C},\mathcal{I})\rightsquigarrow_{\sigma}^{*}(\mathcal{C}^{'},\mathcal{I})$，并且$\theta^{'}$为$(\mathcal{C}^{'},\mathcal{I})$的一个解。
+\item 停机：在策略$S$下如果$(\mathcal{C},\mathcal{I})\rightsquigarrow_{\sigma}^{n}(\mathcal{C}^{'},\mathcal{I})$，则n多项式有界于C的大小，同时，C’的子项个数小于C的子项个数。
+\end{itemize}
+\end{definition}
+
+
+考虑SMNDP协议中的约束系统，可以在策略$S$下简化该约束系统
+\begin{table}
+\caption{SMNDP协议约束系统}
+
+$(\mathcal{C},\mathcal{I})$
+$\text{\ensuremath{\mathsf{R_{f}:(\mathcal{C}_{1},\mathcal{I})\rightsquigarrow^{*}(\mathcal{C}_{2},\mathcal{I})}}}$
+with 
+
+$\mathcal{C}_{2}=\begin{cases}
+\begin{array}{cccc}
+T_{0}\cup\{u_{0}\sigma,u_{1}\sigma\}\Vdash Req & \land & T_{0}\cup\{u_{0}\sigma,u_{1}\sigma,u_{2}\sigma\}\Vdash Rep & \land\\
+T_{0}\cup\{u_{0}\sigma,u_{1}\sigma\}\Vdash S & \land & T_{0}\cup\{u_{0}\sigma,u_{1}\sigma,u_{2}\sigma\}\Vdash D & \land\\
+T_{0}\cup\{u_{0}\sigma,u_{1}\sigma\}\Vdash D & \land & T_{0}\cup\{u_{0}\sigma,u_{1}\sigma,u_{2}\sigma\}\Vdash S & \land\\
+T_{0}\cup\{u_{0}\sigma,u_{1}\sigma\}\Vdash Id & \land & T_{0}\cup\{u_{0}\sigma,u_{1}\sigma,u_{2}\sigma\}\Vdash x_{route} & \land\\
+T_{0}\cup\{u_{0}\sigma,u_{1}\sigma\}\Vdash x_{l} & \land & T_{0}\cup\{u_{0}\sigma,u_{1}\sigma,u_{2}\sigma\}\Vdash x_{sign}
+\end{array}\end{cases}$
+
+$\text{\ensuremath{\mathsf{R_{ax}:(\mathcal{C}_{2},\mathcal{I})\rightsquigarrow^{*}(\mathcal{C}^{'},\mathcal{I})}}}$
+
+
+$\mathcal{C}^{'}=\begin{cases}
+\begin{array}{ccc}
+T_{0}\cup\{u_{0}\sigma,u_{1}\sigma\}\Vdash x_{l} & \land & T_{0}\cup\{u_{0}\sigma,u_{1}\sigma,u_{2}\sigma\}\Vdash x_{route}\\
+& \land & T_{0}\cup\{u_{0}\sigma,u_{1}\sigma,u_{2}\sigma\}\Vdash x_{sign}
+\end{array}\end{cases}$
+\end{table}
+
+约束系统$(\mathcal{C}^{'},\mathcal{I})$为可解形式，并且$\theta=\theta^{'}\circ\sigma$为$(\mathcal{C}^{'},\mathcal{I})$的一个解，其中$\theta^{'}=\{x_{l}\mapsto[I;W],x_{route}\mapsto[I;W],x_{sign}\mapsto l_{sign}\}$。
+
+  证明了在可解约束系统中，利用变化规则使得所有可能子项间等价性已被猜测，因此保证了两个不同子项不会映射至同一项。
+
+\subsection{可推理项}
+针对任意解，任意攻击者知识的可推理项可仅通过组合产生。首先针对T中的每个项，附加一个可从$T\cup vars(T)$中得到的子项集合。针对可求解约束系统，这些变量确实是可推定的。
+$Sat_{v}(T)=\{u\in st(T)\mid T\cup vars(T)\vdash u\}$
+\begin{proposition}
+设$(\mathcal{C},\mathcal{I})$为一个可解形式的约束系统，$O$为该系统的一个解，$T$为$C$中一个约束的左值，$u$为使得$T\theta\cup\mathcal{I}\vdash u$
+成立的项，则仅通过利用组合规则可得$Sat_{v}(T)\theta\cup\mathcal{I}\vdash u$。
+\label{proposition-1}
+\end{proposition}
+命题\ref{proposition-1}表明计算一个可解约束系统时可能的，一个基础$Sat_{v}(T)$所有可推导项均可通过仅利用组合规则产生。
+这在递归测试中很关键。更一般地，可推理项能够更好地适用于拓展敌手模型并且在处理其他属性如检查路由可行性、认证属性中同样有效。
+
+同时，在约束系统中也使用构造解这个概念。
+
+\begin{definition}{（构造解）}
+
+设$(\mathcal{C},\mathcal{I})$为一个可解形式的约束系统。一个项$\theta$是该系统的构造解是指对于每个推导的约束$T\Vdash x$，仅通过使用组合规则即可得$Sat_{v}(T)\theta\cup\mathcal{I}\vdash x\theta$.
+\end{definition}
+
+可解系统中一个解必定是一个构造解，但反之未必。这个概念将用于证明在变换解中保持构造属性，但不保持非混淆属性。
+
+\section{安全路由协议判定算法研究}
+安全路由协议一般通过递归检查来确保给定路由的有效性。在路由协议中节点的目的是建立和证明两个想要通信的给定节点之间的成功路由（节点名称列表）。
+路由中的每个节点一般在其知识范围内，通过证明所提出的路由是正确的来为路由协议做出贡献。
+因此，每次贡献包含一个名称路由列表。
+然后，最终节点收到贡献列表并且检查是否每个贡献都包含相同的名称列表。
+这些贡献必须与接收的整个消息一致。
+%例如，在SMNDP协议中，源节点必须检查收到的消息是否具有以下形式：
+
+%$\left[\llbracket\left\langle D,S,l_{route}\right\rangle \rrbracket_{sk(A_{n})};\ldots;\llbracket\left\langle D,S,l_{route}\right\rangle \rrbracket_{sk(A_{1})};\llbracket\left\langle D,S,l_{route}\right\rangle \rrbracket_{sk(D)}\right]$ \\
+%其中 $l_{route}=\left[D;A_{1};\ldots;A_{n}\right]$
+
+\subsection{基于映射的语言}
+消息由节点列表$\left[A_{1};\ldots;A_{n}\right]$判定。
+这是路由协议的特性。本节
+提出了一个通用定义来覆盖所有此类基于名称列表的语言。
+
+\begin{definition}{(基于映射的语言)}
+
+假设$b$是一个不包含名称和符号的变量，同时满足：
+\[
+\{w_{1},w_{1}^{p},\ldots,w_{m}^{p}\}\subseteq vars(b)\subseteq\{w_{1},w_{2},w_{3},w_{1}^{p},\ldots,w_{m}^{p}\}.
+\]
+变量$w_{1}^{p},\ldots,w_{m}^{p}$是语言的参数，其中$w_{1}^{p}$，$w_{2}^{p}$和$w_{3}^{p}$是特定变量。
+假设$\mathcal{P}=\left\langle P_{1},\ldots,P_{m}\right\rangle $是一个名称组，$\sigma_{\mathcal{P}}=\{w_{1}^{p}\mapsto P_{1},\ldots,w_{m}^{p}\mapsto P_{m}\}$。
+$l=\left[A_{1};\ldots;A_{n}\right]$是一个名称列表，$l$的递归链接按照下面的方式定义：
+\[
+m_{\mathcal{P}}\left(i,l\right)=\left(b\sigma_{\mathcal{P}}\right)\left\{ w_{1}\mapsto l,w_{2}\mapsto A_{i},w_{3}\mapsto\left[m_{\mathcal{P}}\left(i-1,l\right);\ldots;m_{\mathcal{P}}\left(1,l\right)\right]\right\} 
+\]
+基于映射的语言（由$b$定义）如下所示：
+
+$\mathcal{L}=\{ \left\langle \mathcal{P},\left\langle l,l'\right\rangle \right\rangle \mid \mathcal{P}=\left\langle P_{1},\ldots,P_{m}\right\rangle$ 是一个名称组，
+
+$l=\left[A_{1};\ldots;A_{n}\right]$是一个名称列表,
+$n\in\mathbb{N}$，并且$l'=\left[m_{\mathcal{P}}(n,l);\ldots;m_{\mathcal{P}}(1,l)\right]\}.$
+\end{definition}
+基于映射的语言由基本形状$b$定义。特殊变量$w_2$和$w_3$是可选的，不一定在$b$中出现。
+语言中的每个元素是一个元组$\left\langle \mathcal{P},\left\langle l,l'\right\rangle \right\rangle$，其中$l'$是由元组$\mathcal{P}=\left\langle P_{1},\ldots,P_{m}\right\rangle$和拥有任意长度$n$的列表$l$完全定义的。
+在列表$l'$中，每个连接包含相同的参数$P_{1},\ldots,P_{m}$(源节点和目的节点)，$n$个名称$\left[A_{1};\ldots;A_{n}\right]$的列表$l$，当前可能的名称$A_i$和跟随基形状$b$之前连接的列表。
+
+这里用两个路由协议示例来说明这个定义。
+
+例4（SMNDP协议）：在SMNDP协议中，建立在列表$l=\left[A_{1},\ldots,A_{n}\right]$之上的源节点$S$期望的签名列表是$\left[s_{n},\ldots,s_{1}\right]$，其中$s_{i}=\left\llbracket \left\langle D,S,l\right\rangle \right\rrbracket _{sk(A_{i})}$。
+这种语言包含两个参数：源节点$w_1^p$的名字和目的节点$w_2^p$的名字。
+这种语言可以由$b=\left\llbracket \left\langle w_2^p,w_1^p,w_1\right\rangle \right\rrbracket _{sk(w_{2})}$进行形式化描述。
+
+例5（endairA协议）：SMNDP协议和endairA协议的不同之处在于响应阶段时中间节点在他们收到的部分签名列表之上计算一个签名。
+在endairA协议中，源节点$S$建立在节点列表$l=\left[A_{1},\ldots,A_{n}\right]$之上期望的签名列表是$l'_s=\left[s_{n},\ldots,s_{1}\right]$，其中$s_{i}=\left\llbracket \left\langle D,S,l,[s_{i-1};\ldots;s_{1}]\right\rangle \right\rrbracket _{sk(A_{i})}$。
+这种语言包含两个参数：源节点$w_1^p$的名字和目的节点$w_2^p$的名字。
+这种语言可以由$b=\left\llbracket \left\langle w_2^p,w_1^p,w_1,w_3\right\rangle \right\rrbracket _{sk(w_{2})}$进行形式化描述。
+
+\subsection{判定算法研究}
+本节对于数量有限的会话，提出了一种基于映射测试的判定算法，以判定协议机密性。
+
+\begin{theorm}
+假设$\mathcal{L}$是一种基于映射的语言。
+$(\mathcal{C},\mathcal{I})$是一个约束系统。
+$\phi$是$\mathcal{L}$-语言对应于$(\mathcal{C},\mathcal{I})$的约束。
+判定$(\mathcal{C},\mathcal{I})\wedge\phi$是否有解是一个NP问题。
+\label{theorm-decision}
+\end{theorm}
+
+\textbf{证明}
+
+为了能够在多项式时间内得到$(\mathcal{C},\mathcal{I})$和$\phi$的解。将这个过程分为三步。
+
+\textbf{第一步}。可以得到$v_{j}=\left\langle \left\langle p_{1}^{j},\ldots,p_{m}^{j}\right\rangle ,\left\langle l_{j},l_{j}'\right\rangle \right\rangle $。
+实际上，如果$\theta$是约束$v_j\in \mathcal{L}$的一个解，那么根据$\mathcal{L}$的定义，存在一个名称元组$\left\langle p_{1},\ldots,p_{m}\right\rangle$和列表$l$，$l'$满足$v_{j}\theta=\left\langle \left\langle p_{1}^{j},\ldots,p_{m}^{j}\right\rangle ,\left\langle l_{j},l_{j}'\right\rangle \right\rangle $。
+可以计算$\sigma_{j}=mgu\{v_{j}=\left\langle \left\langle x_{1},\ldots,x_{m}\right\rangle ,\left\langle y_{1},y_{2}\right\rangle \right\rangle \}$其中$x_1,\ldots,x_m,y_1,y_2$是新变量，$x_1,\ldots,x_m$按基排序，$y_1,y_2$按列表排序。那么，可以使用$\sigma_j$置换$\mathcal{C}$。$\mathcal{C}$的DAG大小每次变换至多增长$2\times (2+m)$。
+
+\textbf{第二步}。使用定理：$(\mathcal{C},\mathcal{I})$存在一个解$\theta$当且仅当在解的形式中存在一个约束系统$(\mathcal{C'},\mathcal{I})$和置换$\sigma$,$\theta'$满足$(\mathcal{C},\mathcal{I})\rightsquigarrow\begin{array}{c}
+\ast\\
+\sigma
+\end{array}(\mathcal{C'},\mathcal{I})$，通过策略$\mathcal{S}$，$\theta=\theta'\textdegree \sigma$推导，其中$\theta'$是$(\mathcal{C'},\mathcal{I})$的一个解。
+更进一步，可以得到$\theta'$是$\phi\sigma$的一个解。
+推导的长度与$\mathcal{C}$的DAG大小中呈多项式关系，并且$\mathcal{C'}$的DAG大小也与$\mathcal{C}$的DAG大小呈多项式关系。
+推测这样一个推导现在留下来决定$(\mathcal{C'},\mathcal{I})$和$\phi \sigma$的一个解$\theta'$的存在。
+
+从命题\ref{proposition-1}可得$(\mathcal{C'},\mathcal{I})$的一个解是一个特别的可构造解。
+
+\textbf{第三步}。要判定约束系统$(\mathcal{C'},\mathcal{I})$和$\phi'=\phi\sigma$是否存在一个可构造解$\theta'$，其中$\phi'=v'_{1}\in \mathcal{L}\land\cdots\land v'_{p}\in \mathcal{L}$，$v'_{j}=\left\langle \left\langle p_{1}^{j},\ldots,p_{m}^{j}\right\rangle ,\left\langle l_{j},l_{j}'\right\rangle \right\rangle $，$(\mathcal{C'},\mathcal{I})$是解的形式。
+
+根据引理16，如果存在一个解$\theta'$，可以假设对每个$1\leq j\leq p$，有
+\[
+\parallel tail(l_{j})\theta'\parallel_{l}\leq M=\#st(\mathcal{C}',\phi')+\underset{1\leq j\leq p}{\max}\parallel l'_{j}\parallel_{l}+2\times\#vars(\mathcal{C}')\times\underset{t\in st(\mathcal{C}',\phi')}{\max}\parallel t\parallel_{dag}.
+\]
+
+由于$l_j\theta'$是一个名称列表，得到$\parallel l_{j}\theta'\parallel_{dag}\leq2\times\parallel l{}_{j}\theta'\parallel_{l}\leq2\times(M+L)$。
+现在可以使用语言约束$\left\langle \left\langle p_{1}^{j},\ldots,p_{m}^{j}\right\rangle ,\left\langle l_{j},l_{j}'\right\rangle \right\rangle \in \mathcal{L}$来限定$l'_j\theta'$(DAG表现形式下)的大小。
+实际上，由于$\mathcal{L}$的定义，如果$l_{j}\theta'=\left[a_{1};\ldots;a_{n}\right]$，那么$l'_{j}\theta'=\left[m_{n};\ldots;m_{1}\right]$，其中$m_{i}=b_{j}\left\lfloor l_{j}\theta',a_{i},\left[m_{i-1};\ldots;m_{1}\right]\right\rfloor $，$b_{j}=b\left\{ w_{1}^{p}\mapsto p_{1}^{j}\theta',\ldots,w_{m}^{p}\mapsto p_{m}^{j}\theta'\right\} $。
+对每一个$i\leq n$，可以通过$\left[m_{i},\ldots,m_{1}\right]$的大小来限制$\left[m_{i+1},\ldots,m_{1}\right]$的大小：
+\[
+\parallel\left[m_{i+1},\ldots,m_{1}\right]\parallel_{dag}\leq1+\parallel\left[m_{i},\ldots,m_{1}\right]\parallel_{dag}+\parallel b\parallel_{dag}+m+\parallel l_{j}\theta'\parallel_{dag}+1.
+\]
+因此，
+\begin{equation}
+\begin{split}
+\parallel l'_{j}\theta'\parallel_{dag}&\leq n\times(\parallel b\parallel_{dag}+m+2+\parallel l_{j}\theta'\parallel_{dag}) \\
+&\leq\parallel l_{j}\theta'\parallel_{dag}\times(\parallel b\parallel_{dag}+m+2+\parallel l_{j}\theta'\parallel_{dag})\\
+&\leq2(M+L)\times(\parallel b\parallel_{dag}+m+2+2M+2L)
+\end{split}
+\end{equation}
+
+可以假设对每个变量$x$，当$N_0\in \mathcal{I}$时，
+要么有$x\theta'\in st(\phi'\theta')$，要么有$x\theta'\in\left\{ N_{0}, \square\right\} $。
+于是，通过只考虑一个$\mathcal{I}$个名称的有限子集，
+\[
+p\times2(M+L)\times(\parallel b\parallel_{dag}+m+2+2M+2L)+1
+\]
+对每一个变量$x\in dom(\theta')$，得到：
+\begin{equation}
+\begin{split}
+\parallel x\theta'\parallel_{dag}&\leq\max\left\{ \parallel v'_{j}\theta'\parallel_{dag}\mid1\leq j\leq p\right\} \\
+&\leq\max\left\{ \parallel l'_{j}\theta'\parallel_{dag}\mid1\leq j\leq p\right\} +2m+1\\
+&\leq2(M+L)\times(\parallel b\parallel_{dag}+m+2+2M+2L)+2m+1
+\end{split}
+\end{equation}
+
+可以检查一个给定的置换是不是$(\mathcal{C'},\mathcal{I})\wedge \phi$在多项式时间内的一个解。
+为了得出结论，只需证明$M$和$L$是在$\mathcal{C},\phi$大小内的多项式。
+得到
+
+$M=\#st(\mathcal{C}',\phi')+\underset{1\leq j\leq p}{\max}\parallel l'_{j}\sigma\parallel_{l}+2\times\#vars(\mathcal{C}')\times\underset{t\in st(\mathcal{C}',\phi')}{\max}\parallel t\parallel_{dag}$，和
+
+$L=\underset{1\leq j\leq p}{\max}\parallel l'_{j}\sigma\parallel_{dag}$
+
+首先，通过引理有$\#st(\mathcal{C}',\phi')=\#st(\mathcal{C},\phi)$。
+然后，对于每个$u\in st(\mathcal{C},\phi)$可以得到$\parallel u\sigma\parallel_{dag}\leq\parallel u\parallel_{dag}+\#vars(\mathcal{C})\times\underset{t\in st(\mathcal{C},\phi)}{\max}\parallel t\parallel_{dag}$。于是得到的结论。
+
+
+%\begin{proposition}
+%假设$\mathcal{L}$是一种基于映射的语言。
+%$(\mathcal{C},\mathcal{I})$是一个求解形式下的推理约束系统。
+%$\phi$是$\mathcal{L}$-语言对应于$(\mathcal{C},\mathcal{I})$的约束。
+%$\tau$是$(\mathcal{C},\mathcal{I})\wedge\phi$的一个可构造解。
+%进一步假设$\phi$是$u_{1}\uplus \mathcal{L}\wedge\ldots\land u_{k}\in \mathcal{L}$的形式，其中$u_{j}=\left\langle \left\langle p_{1}^{j},\ldots,p_{m}^{j}\right\rangle ,\left\langle l_{j},l_{j}'\right\rangle \right\rangle $。
+
+ %存在$(\mathcal{C},\mathcal{I})\wedge\phi$的一个可构造解$\tau'$，对于每个$j$，有$\parallel l_{j}\tau'\parallel_{l}\leq M$，其中$M$以多项式级依赖于$\mathcal{C}$和$\phi$的大小。
+ %\label{proposition-3}
+ %\end{proposition}
+ %对于每个约束$\left\langle \left\langle p_{1}^{j},\ldots,p_{m}^{j}\right\rangle ,\left\langle l_{j},l_{j}'\right\rangle \right\rangle \in \mathcal{L}$，列表$l_j$提供列表$l'_j$末尾元素的约束，同时列表$l'_j$提供列表$l_j$末尾元素的约束。
+% 命题\ref{proposition-3}证明的主要思想是展示它有可能从中间切断列表$l_j$，并且相应地修改列表$l'_j$。
+%然而这并不简单，因为必须表明新的置换仍然是约束系统$(\mathcal{C},\mathcal{I})$的解决方案。
+%特别地是，削减部分列表可能会破坏一些令人关注用于推断术语的等式。
+%实际上通过考虑可构造解和在列表中的某个位置切断可以避免这个问题。
+%可以通过组合参数来确保没有任何元素是约束的子项。
+
+%命题\ref{proposition-3}可以将$l_j\theta$的大小限制为最小解$\theta$，从而又限制了$l'_j\theta$的大小。
+%定理\ref{theorm-decision}证明的最后一步在于如何找到，任何$x\theta$受到列表大小的限制或者可以用常数替换。
+
+
+
+
+
+
+
+
+
+\section{本章小结}
+
+本章针对递归协议的递归原语难以形式化描述，导致递归协议安全性难以判定的问题，
+提出了基于拓展敌手模型的递归协议安全性判定算法，该算法能够对执行正常输入输出以及递归测试的协议进行验证，尤其是安全路由协议以及公钥证书路径的验证。本章通过对递归协议消息项、敌手能力建模，建立递归协议安全性判定约束系统。在拓展的敌手模型条件下，通过简化规则，将协议拓展敌手模型下的可推理项置于约束系统下。给出了基于映射的递归语言的判定过程，并证明这是一个NP问题。
